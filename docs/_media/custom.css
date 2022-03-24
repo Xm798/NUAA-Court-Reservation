@@ -99,3 +99,11 @@ input,
 img {
     max-width: 600px;
 }
+
+.markdown-section td, .markdown-section th {
+    white-space: nowrap;
+}
+
+.markdown-section table strong{
+    color:#ffa60f
+}
