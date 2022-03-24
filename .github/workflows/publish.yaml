@@ -7,6 +7,38 @@ on:
 
 
 jobs:
+#  serverless:
+#    name: Publish serverless release
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v2
+#      - name: Set env
+#        run: echo "RELEASE_VERSION=$(echo ${GITHUB_REF:10})" >> $GITHUB_ENV
+#      - name: Initialization environment
+#        uses: actions/setup-python@v1
+#        with:
+#          python-version: 3.7
+#      - name: Install requirements
+#        run: pip install -t . -r ./requirements.txt
+#      - name: Install zip
+#        run: |
+#          sudo -E apt-get update
+#          sudo -E apt-get install zip
+#      - name: Pack serverless file
+#        run: |
+#          zip -r "Court_Reservation.zip" . -x "*.pyc" -x "./bin/*" -x "*.so" -x ".git/*" -x ".github/*" -x ".gitignore"
+#        env:
+#          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+#      - name: Upload
+#        uses: actions/upload-release-asset@v1.0.1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          upload_url: ${{ github.event.release.upload_url }}
+#          asset_path: ./Court_Reservation.zip
+#          asset_name: Court-Reservation-${{ github.event.release.tag_name }}-serverless.zip
+#          asset_content_type: binary/octet-stream
   serverless:
     name: Publish serverless release
     runs-on: ubuntu-latest
@@ -20,34 +52,42 @@ jobs:
         with:
           python-version: 3.7
       - name: Install requirements
-        run: pip install -t . -r ./requirements.txt
+        run: |
+          pip install -r ./requirements.txt
+          pip install pyinstaller
+      - name: Build
+        run: |
+          pyinstaller -F -n "Court_Reservation" index.py
       - name: Install zip
         run: |
           sudo -E apt-get update
           sudo -E apt-get install zip
-      - name: Pack serverless file
+      - name: Pack
         run: |
-          zip -r "Court_Reservation.zip" . -x "*.pyc" -x "./bin/*" -x "*.so" -x ".git/*" -x ".github/*" -x ".gitignore"
-        env:
-          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+          mv ./config.example.toml ./dist/config.toml
+          mv index.sh ./dist/index.sh
+          cd dist
+          chmod +x Court_Reservation
+          zip -r "release-linux.zip" .
       - name: Upload
         uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./Court_Reservation.zip
+          asset_path: ./dist/release-linux.zip
           asset_name: Court-Reservation-${{ github.event.release.tag_name }}-serverless.zip
           asset_content_type: binary/octet-stream
+      - uses: actions/upload-artifact@v3
+        with:
+          name: linux-release
+          path: ./release-linux.zip
   windows:
     name: Publish windows release
     runs-on: windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Set env
-        shell: bash
-        run: echo "RELEASE_VERSION=$(echo ${GITHUB_REF:10})" >> $GITHUB_ENV
       - name: Initialization environment
         uses: actions/setup-python@v1
         with:
@@ -57,21 +97,22 @@ jobs:
           pip install -r ./requirements.txt
           pip install pyinstaller
       - name: Build
-        shell: bash
         run: |
           pyinstaller -F -i icon.ico -n "Court_Reservation.exe" index.py
-        env:
-          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+      - name: Pack
+        run: |
+          Move-Item -Force -Path .\config.example.toml -Destination .\config.toml
+          Get-ChildItem -Path .\dist\*.exe, .\config.toml | Compress-Archive -DestinationPath .\release-Windows.zip
       - name: Upload
         uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./dist/Court_Reservation.exe
+          asset_path: ./release-Windows.zip
           asset_name: Court-Reservation-${{ github.event.release.tag_name }}-Windows.exe
           asset_content_type: binary/octet-stream
       - uses: actions/upload-artifact@v3
         with:
           name: windows-release
-          path: dist/*.exe
+          path: ./release-Windows.zip
