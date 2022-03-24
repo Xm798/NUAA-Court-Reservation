@@ -91,32 +91,39 @@ class NUAA(object):
             log.debug(e)
             return False
         else:
-            vjuid = re.search(
-                r'(?<=(vjuid=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
-            ).group(0)
-            vjvd = re.search(
-                r'(?<=(vjvd=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
-            ).group(0)
-            vt = re.search(
-                r'(?<=(vt=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
-            ).group(0)
-            phpsessid = re.search(
-                r'(?<=(PHPSESSID=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
-            ).group(0)
-            self.cookie_ehall = {
-                'PHPSESSID': phpsessid,
-                'vjuid': vjuid,
-                'vjvd': vjvd,
-                'vt': vt,
-            }
-            if vjuid and vjvd and vt and phpsessid:
-                log.info('获取预约系统鉴权信息成功')
-                return True
-            else:
-                log.error('获取预约系统鉴权信息失败，请查阅 debug 日志')
-                self.push_content.append('获取预约系统鉴权信息失败，请查阅 debug 日志')
-                log.debug(response.headers)
+            try:
+                vjuid = re.search(
+                    r'(?<=(vjuid=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
+                ).group(0)
+                vjvd = re.search(
+                    r'(?<=(vjvd=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
+                ).group(0)
+                vt = re.search(
+                    r'(?<=(vt=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
+                ).group(0)
+                phpsessid = re.search(
+                    r'(?<=(PHPSESSID=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
+                ).group(0)
+            except Exception as e:
+                log.error('登录预约系统失败，可能是账号失效，请查阅 debug 日志')
+                self.push_content.append('登录预约系统失败，可能是账号失效，请查阅 debug 日志')
+                log.debug(e)
                 return False
+            else:
+                self.cookie_ehall = {
+                    'PHPSESSID': phpsessid,
+                    'vjuid': vjuid,
+                    'vjvd': vjvd,
+                    'vt': vt,
+                }
+                if vjuid and vjvd and vt and phpsessid:
+                    log.info('获取预约系统鉴权信息成功')
+                    return True
+                else:
+                    log.error('获取预约系统鉴权信息失败，请查阅 debug 日志')
+                    self.push_content.append('获取预约系统鉴权信息失败，请查阅 debug 日志')
+                    log.debug(response.headers)
+                    return False
 
     def get_name(self):
         try:
@@ -210,7 +217,7 @@ class NUAA(object):
             return
         log.info('STEP2: 获取预约系统鉴权信息...')
         if not self.get_ehall_cookie():
-            return
+            return False
         log.info('STEP3: 获取用户基本信息...')
         self.get_name()
         self.time_check()
@@ -221,7 +228,6 @@ class NUAA(object):
                 return True
             elif result == -1:  # 预约失败，换个场地
                 time.sleep(0.5)  # 稍微歇会
-                # continue
         return False
 
     def push(self, status):
