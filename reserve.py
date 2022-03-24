@@ -19,7 +19,6 @@ log = logging
 
 
 def request(*args, **kwargs):
-    # proxy = {"http": "http://127.0.0.1:8866", "https": "http://127.0.0.1:8866"}
     is_retry = True
     count = 0
     max_retries = 3
@@ -27,7 +26,6 @@ def request(*args, **kwargs):
     while is_retry and count <= max_retries:
         try:
             s = requests.Session()
-            # requests.packages.urllib3.disable_warnings()
             response = s.request(*args, **kwargs, timeout=1)
             is_retry = False
         except Exception as e:
@@ -156,7 +154,6 @@ class NUAA(object):
                 'data': f'[{json.dumps(court_data)}]',
             }
             body = urlencode(body)
-            print(body)
             headers = {
                 'Host': 'ehall3.nuaa.edu.cn',
                 'Accept': 'application/json, text/plain, */*',
@@ -166,7 +163,6 @@ class NUAA(object):
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Origin': 'https://ehall3.nuaa.edu.cn',
                 'Referer': 'https://ehall3.nuaa.edu.cn/v2/reserve/m_reserveDetail?id=19',
-                'Connection': 'keep-alive',
                 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
             }
             response = request(
@@ -192,7 +188,7 @@ class NUAA(object):
                     f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约成功"
                 )
                 return 1
-            elif r['m'] == "预约日期未达到":
+            elif r['m'] == "不在服务时间":
                 log.info(fail_info)
                 self.push_content.append(fail_info)
                 return 0
@@ -220,7 +216,6 @@ class NUAA(object):
         self.time_check()
         log.info('STEP4: 提交预约申请...')
         for court in self.court_list:
-            print(court)
             result = self.launch_reserve(court)
             if result == 1:  # 预约成功
                 return True

@@ -1,0 +1,38 @@
+# 第一个用户
+[[users]]
+  # 预约场地的 id
+  court_id = "19"
+  # 抓包 i·南航 APP 获得
+  [users.auth]
+  access_token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  refresh_token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+  # 10号场地，19:00-20:00
+  [[users.clout_list]]
+  date = "2022-03-24"
+  period = 1835
+  sub_resource_id = 12337
+
+  # 11号场地，19:00-20:00
+  [[users.clout_list]]
+  date = "2022-03-24"
+  period = 1835
+  sub_resource_id = 12350
+
+  # 还需要添加可以复制之后在这里添加，比如：
+  #  [[users.clout_list]]
+  #  date = "2022-03-24"
+  #  period = 1834
+  #  sub_resource_id = 12336
+
+  # 通知设置
+  [users.notify]
+  # Telegram 推送
+  TG_BOT_TOKEN = "1xxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  TG_USER_ID = "xxxxxxxxx"
+  TG_API_HOST = "xxxxxxxxxx"
+  # 微信 Push plus 推送
+  PUSH_PLUS_TOKEN = "xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# -----------------------------------------------
+# 需要更多用户：复制上面全部内容，贴在下面，修改对应参数

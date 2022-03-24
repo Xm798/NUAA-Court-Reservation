@@ -1,12 +1,13 @@
 name: Publish Release
 
 on:
-  push:
-    tags:
-      - v*
+  release:
+    types:
+      - created
+
 
 jobs:
-  main:
+  serverless:
     name: Publish serverless release
     runs-on: ubuntu-latest
     steps:
@@ -17,7 +18,7 @@ jobs:
       - name: Initialization environment
         uses: actions/setup-python@v1
         with:
-           python-version: 3.7
+          python-version: 3.7
       - name: Install requirements
         run: pip install -t . -r ./requirements.txt
       - name: Install zip
@@ -27,14 +28,50 @@ jobs:
       - name: Pack serverless file
         run: |
           zip -r "Court_Reservation_$RELEASE_VERSION"".zip" . -x "*.pyc" -x "./bin/*" -x "*.so" -x ".git/*" -x ".github/*" -x ".gitignore"
-        env: 
+        env:
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
-      - name: Publish release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with: 
-          files: "*.zip"
+      - name: Upload
+        uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: "*.zip"
+          asset_name: Court-Reservation-${{ github.event.release.tag_name }}-serverless.zip
+          asset_content_type: binary/octet-stream
+  windows:
+    name: Publish windows release
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set env
+        shell: bash
+        run: echo "RELEASE_VERSION=$(echo ${GITHUB_REF:10})" >> $GITHUB_ENV
+      - name: Initialization environment
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Install requirements
+        run: |
+          pip install -r ./requirements.txt
+          pip install pyinstaller
+      - name: Build
+        shell: bash
+        run: |
+          pyinstaller -F -i icon.ico -n "Court_Reservation_$RELEASE_VERSION.exe" index.py
+        env:
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+      - name: Upload
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: "dist/*.exe"
+          asset_name: Court-Reservation-${{ github.event.release.tag_name }}-Windows.exe
+          asset_content_type: binary/octet-stream
+      - uses: actions/upload-artifact@v3
+        with:
+          name: windows-release
+          path: dist/*.exe
