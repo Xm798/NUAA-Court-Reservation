@@ -1,0 +1,10 @@
+:root {
+    /* Reduce the font size */
+    --base-font-size: 18px;
+
+    /* Change the theme color hue */
+    --theme-hue: 325;
+
+    /* Change the sidebar bullets */
+    --sidebar-nav-link-before-content: '😀';
+}

@@ -1,0 +1,101 @@
+@import url('https://fonts.loli.net/css2?family=Inconsolata:wght@200;400&family=Liu+Jian+Mao+Cao&family=Ma+Shan+Zheng&family=Noto+Sans+Mono:wght@200;300;400&family=Noto+Sans+SC:wght@100;300;400;500;700;900&family=ZCOOL+XiaoWei&display=swap');
+section.cover .cover-main {
+    z-index: 100;
+}
+
+section.cover h1 {
+    font-family: 'Ma Shan Zheng', 'Noto Sans SC', SFMono-Regular, Consolas, Liberation Mono, Menlo, Courier, monospace;
+    font-size: 4rem;
+    font-weight: 500;
+    margin: 0.625rem 0 2.5rem;
+    position: relative;
+    text-align: center;
+}
+
+section.cover p {
+    line-height: 1.5rem;
+    margin: 5em 0;
+}
+
+.app-nav a {
+    font-family: 'Noto Sans SC', -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue";
+}
+
+section.cover.has-mask .mask {
+    background-color: #fff;
+    opacity: .1 !important;
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 100%;
+}
+
+section.cover h1 .anchor span {
+    color: var(--theme-color);
+}
+
+section.cover h2 .anchor span {
+    font-size: 24px;
+    color: var(--theme-color);
+}
+
+section.cover .cover-main>p:last-child a .iconfont {
+    font-size: 1em;
+}
+
+.sidebar>h1 a {
+    font-family: 'Lobster', cursive;
+}
+
+.sidebar ul li a {
+    font-family: 'Noto Sans SC', -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue";
+    font-size: 1.1rem;
+}
+
+
+body,
+input,
+.docsify-copy-code-button {
+    font-family: 'Noto Sans SC', -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue";
+    font-size: 1.15rem;
+}
+
+.markdown-section>:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) code {
+    font-size: 1rem;
+}
+
+.markdown-section ol, .markdown-section p, .markdown-section ul {
+    line-height: 2.2rem;
+    word-spacing: 0.05rem;
+}
+
+.markdown-section code {
+    font-family: 'Noto Sans Mono', Consolas, Liberation Mono, Menlo, Courier, monospace;
+    /* font-family from GitHub */
+    font-size: 1rem;
+    color: #25798A;
+
+}
+
+.markdown-section pre {
+    font-family: 'Noto Sans Mono', Consolas, Liberation Mono, Menlo, Courier, monospace;
+    /* font-family from GitHub */
+    font-size: 1rem;
+    line-height: 1.6rem;
+}
+
+.token.property{
+    color: #25798A;
+}
+
+.token.number{
+    color: #25798A;
+}
+
+.markdown-section h1, .markdown-section h2, .markdown-section h3, .markdown-section h4, .markdown-section strong {
+    font-weight: 600;
+}
+
+img {
+    max-width: 600px;
+}

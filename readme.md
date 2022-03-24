@@ -1,8 +1,66 @@
+## 使用方法
+
+下载对应的程序包，Windows 使用 xxxx-Windows.zip，云函数使用 xxxx-Serverless.zip
+
+
+### 云函数
+
+> 推荐，不用早起开电脑，成功率高。
+
+#### 腾讯云云函数SCF
+
+<details>
+
+   
+1. 打开[腾讯云云函数控制台](https://console.cloud.tencent.com/scf)，登录账号，点击“函数服务”-“新建”。
+2. 选择“从头开始”，输入一个函数名。地域在国内随便选择，运行环境为 Python3.7。
+   ![](https://s2.loli.net/2022/02/09/BVQ1sZnSfRj2UhF.png)
+
+3. 函数代码部分，选择“本地上传 zip 包”，选择下载的程序包并上传。
+   ![](https://s2.loli.net/2022/02/09/HM275iAPhzxRyBn.png)
+4. 展开“高级配置”，**修改执行超时时间为 300 秒**。
+   
+   ![](https://dd-static.jd.com/ddimg/jfs/t1/213763/21/15653/18964/623c2d46E033662ed/d45d80684e2ad1ae.png)
+5. 展开触发器配置，选择自定义触发周期，填写 cron 表达式 `30 59 6 日 月 * *`，日和月替换为数字，例如预约 4月1日的，填 `30 59 6 1 4 * *`，意思是 4月1日早上6点59分30秒 运行。
+   
+   ![](https://dd-static.jd.com/ddimg/jfs/t1/196757/26/21666/35075/623c2d71E4bbc3145/c0ee9611938d07d2.png)
+6. 跳转到 **函数管理 - 函数代码**页面，找到 `config.toml`，**填写你的配置**。
+7. 点击下方“**部署并测试**”，查看日志测试是否运行正常。
+
+</details>
+
+#### 阿里云函数计算FC
+
+<details>
+
+1. 登录[阿里云函数计算控制台](https://fcnext.console.aliyun.com/overview)，在最上方选择好地域。进入“服务及函数”-“创建服务”，输入名称，点击确定。
+   ![](https://s2.loli.net/2022/02/16/pVxDnS1NZrlIAsB.png)
+
+2. 进入创建好的服务，点击**创建函数**，**从零开始创建**。输入**函数名称**，运行环境选择 **Python 3**，触发方式为**通过事件触发**，内存规格选择 **128MB**。
+   
+3. 创建完成后，进入**函数代码**页面，选择“上传代码”-上传 zip 包，选择下载的 serverless 包并上传。
+   
+4. 上传后，在编辑器中找到`config.toml`，**填写你的配置**。保存后，点击**部署代码**，再点击**测试函数**。
+   
+    ![image.png](https://dd-static.jd.com/ddimg/jfs/t1/190778/30/22199/150074/623c2e5aE39b106c1/bf7075e6dfdc34b9.png)
+5. 切换到**触发器管理**选项卡，**创建触发器**，选择**定时触发器**，输入**名称**，选择**按照 CRON 表达式触发**，填入 `CRON_TZ=Asia/Shanghai 30 59 6 日 月 *`，日和月替换为数字，例如预约 4月1日的，填 `CRON_TZ=Asia/Shanghai 30 59 6 1 4 *`，意思是 4月1日早上6点59分30秒 运行。
+   
+   ![image.png](https://dd-static.jd.com/ddimg/jfs/t1/222935/18/13746/25929/623c2fc9E9cb47bcd/dc31ff573079a9da.png)
+
+</details>
+
+### Windows
+
+1. 解压缩，打开 config.toml，填写信息。**注意：填写完配置文件后，请务必验证格式是否正确。** 可使用 [Toml-lint](https://www.toml-lint.com/)，更建议使用 [VSCode](https://code.visualstudio.com/) 等编辑器直接编辑。
+
+2. 打开 cmd 或 powershell，cd 进入当前目录，运行 ./Court_Reservation.exe，即可。注意，要比 7:00 早一点运行，例如 6:59:00。
+
+
 ## 配置说明
 
 ### 参数说明
 
-1. auth 中的 `access_token` 和 `refresh_token` 来源于抓包 i·南航 APP。打开i·南航APP，打开一次体育场馆预约，在抓包工具中搜索 access_token 即可。抓包方法见最后。
+1. auth 中的 `access_token` 和 `refresh_token` 来源于抓包 i·南航 APP。打开i·南航APP，打开一次体育场馆预约，在抓包工具中搜索 access_token 即可。抓包方法见最后。只要手机上的 i·南航APP 没有退出、重新登录，`access_token` 和 `refresh_token` 就有效，如果**重新登录了要重新获取**。
 2. `court_id` 是预约场地的编号，见[场地类型列表](#场地类型列表)。
 3. 每一个 `[[users.clout_list]]` 是一个场地，会依次从上到下尝试预约，无法预约会自动预约下一个，建议多放几个，以免都失败。其中：`date`是预约日期，`period`是时间段代码，`sub_resource_id`是场地代码，从表格[场地资源详情](#场地资源详情)中查询，时间段代码是第一列时间段后面括号里的四位数字。
 4. `[users.notify]` 是通知设置，用于推送预约结果，可以选择微信/Telegram/钉钉/飞书/QQ等等，所有支持的变量见下。
@@ -24,7 +82,7 @@
     CQHTTP_TOKEN = ""  # go-cqhttp 的 access_token
     GOTIFY_URL = ""  # gotify地址,如https://push.example.de:8080
     GOTIFY_TOKEN = ""  # gotify的消息应用token
-    GOTIFY_PRIORITY = 0,  # 推送消息优先级,默认为0
+    GOTIFY_PRIORITY = 0  # 推送消息优先级,默认为0
     IGOT_PUSH_KEY = ""  # iGot 聚合推送的 IGOT_PUSH_KEY
     SCT_KEY = ""  # server 酱的 PUSH_KEY
     PUSH_PLUS_TOKEN = ""  # push+ 微信推送的用户令牌
@@ -40,6 +98,8 @@
     TG_PROXY_HOST = ""  # tg 机器人的 TG_PROXY_HOST
     TG_PROXY_PORT = ""  # tg 机器人的 TG_PROXY_PORT
    ```
+
+
 
 ### 完整配置文件
 ```toml
