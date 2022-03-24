@@ -5,7 +5,7 @@ section.cover .cover-main {
 
 section.cover h1 {
     font-family: 'Ma Shan Zheng', 'Noto Sans SC', SFMono-Regular, Consolas, Liberation Mono, Menlo, Courier, monospace;
-    font-size: 4rem;
+    font-size: 3.5rem;
     font-weight: 500;
     margin: 0.625rem 0 2.5rem;
     position: relative;
@@ -49,7 +49,7 @@ section.cover .cover-main>p:last-child a .iconfont {
 
 .sidebar ul li a {
     font-family: 'Noto Sans SC', -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue";
-    font-size: 1.1rem;
+    font-size: 1em;
 }
 
 
@@ -57,22 +57,22 @@ body,
 input,
 .docsify-copy-code-button {
     font-family: 'Noto Sans SC', -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue";
-    font-size: 1.15rem;
+    font-size: 1em;
 }
 
 .markdown-section>:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) code {
-    font-size: 1rem;
+    font-size: 0.9em;
 }
 
 .markdown-section ol, .markdown-section p, .markdown-section ul {
-    line-height: 2.2rem;
+    line-height: 2rem;
     word-spacing: 0.05rem;
 }
 
 .markdown-section code {
     font-family: 'Noto Sans Mono', Consolas, Liberation Mono, Menlo, Courier, monospace;
     /* font-family from GitHub */
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: #25798A;
 
 }
@@ -80,8 +80,8 @@ input,
 .markdown-section pre {
     font-family: 'Noto Sans Mono', Consolas, Liberation Mono, Menlo, Courier, monospace;
     /* font-family from GitHub */
-    font-size: 1rem;
-    line-height: 1.6rem;
+    font-size: 0.95rem;
+    line-height: 1.4rem;
 }
 
 .token.property{
