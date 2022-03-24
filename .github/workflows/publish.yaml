@@ -27,7 +27,7 @@ jobs:
           sudo -E apt-get install zip
       - name: Pack serverless file
         run: |
-          zip -r "Court_Reservation_$RELEASE_VERSION"".zip" . -x "*.pyc" -x "./bin/*" -x "*.so" -x ".git/*" -x ".github/*" -x ".gitignore"
+          zip -r "Court_Reservation.zip" . -x "*.pyc" -x "./bin/*" -x "*.so" -x ".git/*" -x ".github/*" -x ".gitignore"
         env:
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
       - name: Upload
@@ -36,7 +36,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: "*.zip"
+          asset_path: ./Court_Reservation.zip
           asset_name: Court-Reservation-${{ github.event.release.tag_name }}-serverless.zip
           asset_content_type: binary/octet-stream
   windows:
@@ -59,7 +59,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          pyinstaller -F -i icon.ico -n "Court_Reservation_$RELEASE_VERSION.exe" index.py
+          pyinstaller -F -i icon.ico -n "Court_Reservation.exe" index.py
         env:
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
       - name: Upload
@@ -68,7 +68,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: "dist/*.exe"
+          asset_path: ./dist/Court_Reservation.exe
           asset_name: Court-Reservation-${{ github.event.release.tag_name }}-Windows.exe
           asset_content_type: binary/octet-stream
       - uses: actions/upload-artifact@v3
