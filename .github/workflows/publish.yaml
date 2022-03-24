@@ -60,7 +60,7 @@ jobs:
           pyinstaller -F -i icon.ico -n "Court_Reservation.exe" index.py
       - name: Pack
         run: |
-          Move-Item -Force -Path .\config.example.toml -Destination .\config.toml
+          Move-Item -Force -Path .\config.example.toml -Destination .\config.toml .\README.md
           Get-ChildItem -Path .\dist\*.exe, .\config.toml | Compress-Archive -DestinationPath .\release-Windows.zip
       - name: Upload
         uses: actions/upload-release-asset@v1.0.1
