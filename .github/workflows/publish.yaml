@@ -27,7 +27,7 @@ jobs:
       - name: Pack serverless file
         run: |
           mv -f ./config.example.toml ./config.toml
-          zip -r "release-serverless.zip" . -x "*.pyc" -x "./bin/*" -x "*.so" -x ".git/*" -x ".github/*" -x ".gitignore" -x "icon.ico" -x "resources_refresh.py" -x "resources.md"
+          zip -r "release-serverless.zip" . -x "*.pyc" -x "./bin/*" -x "*.so" -x ".git/*" -x ".github/*" -x ".gitignore" -x "icon.ico" -x "resources_refresh.py" -x "resources.md" -x "./docs/*"
       - name: Upload
         uses: actions/upload-release-asset@v1.0.1
         env:
