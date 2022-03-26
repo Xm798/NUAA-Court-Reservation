@@ -21,12 +21,12 @@ log = logging
 def request(*args, **kwargs):
     is_retry = True
     count = 0
-    max_retries = 3
-    sleep_seconds = 1
+    max_retries = 50
+    sleep_seconds = 3
     while is_retry and count <= max_retries:
         try:
             s = requests.Session()
-            response = s.request(*args, **kwargs, timeout=1)
+            response = s.request(*args, **kwargs, timeout=2)
             is_retry = False
         except Exception as e:
             if count == max_retries:
@@ -44,12 +44,27 @@ def request(*args, **kwargs):
 class NUAA(object):
     def __init__(self, user):
         self.auth: dict = user['auth']
-        self.cookie_ehall: dict = {}
+        self.cookie_ehall: dict = (
+            self.cookie_to_dict(user['cookie']) if user['cookie'] else {}
+        )
         self.name: str = ''
         self.court_id: int = user['court_id']  # 场地类型
         self.court_list: list = user['clout_list']  # 场地列表
         self.notify_conf: dict = user['notify']
         self.push_content: list = []
+
+    @staticmethod
+    def cookie_to_dict(cookie) -> dict:
+        try:
+            if cookie and '=' in cookie:
+                cookie = dict(
+                    [line.strip().split('=', 1) for line in cookie.split(';')]
+                )
+        except Exception as e:
+            log.error('Cookie 格式有误，请检查')
+            return None
+        else:
+            return cookie
 
     @staticmethod
     def time_check():
@@ -142,14 +157,24 @@ class NUAA(object):
                 cookies=self.cookie_ehall,
                 headers=headers,
             )
-            response.encoding = 'utf-8'
-            r = response.json()
-            name = r['d'].get('name')
-            number = r['d'].get('number')
-            self.push_content.append(f'账号：{name} {number}')
         except Exception as e:
             log.info('姓名获取失败')
             log.debug(e)
+        else:
+            response.encoding = 'utf-8'
+            r = response.json()
+            if r['m'] == "该操作需要登录，请登录后重试":
+                log.error('鉴权信息失效，登录失败！')
+                return 'NeedLogin'
+            else:
+                try:
+                    name = r['d'].get('name')
+                    number = r['d'].get('number')
+                    self.push_content.append(f'账号：{name} {number}')
+                except Exception as e:
+                    log.info('姓名获取失败')
+                    log.debug(e)
+                    return
 
     def reserve(self, court_data):
         try:
@@ -212,16 +237,18 @@ class NUAA(object):
         return i
 
     def run(self):
-        if not self.auth:
-            log.error('该账号配置错误，退出...')
-            return
-        log.info('STEP2: 获取预约系统鉴权信息...')
-        if not self.get_ehall_cookie():
-            return False
-        log.info('STEP3: 获取用户基本信息...')
-        self.get_name()
+        if not self.cookie_ehall:
+            log.info('未配置 COOKIE，尝试获取预约系统鉴权信息...')
+            if not self.get_ehall_cookie():
+                return False
+        log.info('获取用户基本信息...')
+        if self.get_name() == 'NeedLogin':
+            log.info('COOKIE 失效，尝试获取预约系统鉴权信息...')
+            self.push_content.append('COOKIE 失效，尝试获取预约系统鉴权信息...')
+            if not self.get_ehall_cookie():
+                return False
         self.time_check()
-        log.info('STEP4: 提交预约申请...')
+        log.info('提交预约申请...')
         for court in self.court_list:
             result = self.launch_reserve(court)
             if result == 1:  # 预约成功

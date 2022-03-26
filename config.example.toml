@@ -2,7 +2,8 @@
 [[users]]
   # 预约场地的 id
   court_id = "19"
-  # 抓包 i·南航 APP 获得
+  # 抓包 i·南航 APP 获得，有 cookie 会优先使用 cookie，否则使用 auth 信息登录
+  cookie = "vjuid=xxxxx; vjvd=xxxxxxxxxxxxxxxxx; vt=xxxxx; PHPSESSID=xxxxxx"
   [users.auth]
   access_token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   refresh_token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
