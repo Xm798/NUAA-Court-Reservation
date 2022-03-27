@@ -32,7 +32,7 @@ def output(f, data):
             for ik, k in enumerate(data):
                 if k['yaxis'] == i and k['abscissa'] == j:
                     f.write(f"{k['sub_id']}|")
-        f.write('\n\n')
+        f.write('\n')
     # f.write('\n</details>\n')
 
 
@@ -74,7 +74,7 @@ def main():
     f = open('resources.md', 'w+', encoding='utf-8')
 
     for i in [13, 14, 15, 16, 17, 19, 20]:
-        url = f"https://ehall3.nuaa.edu.cn/site/reservation/resource-info-margin?resource_id={i}&start_time=2022-03-24&end_time=2022-03-24"
+        url = f"https://ehall3.nuaa.edu.cn/site/reservation/resource-info-margin?resource_id={i}&start_time=2022-03-28&end_time=2022-03-28"
         payload = {}
         headers = {
             'Host': 'ehall3.nuaa.edu.cn',
