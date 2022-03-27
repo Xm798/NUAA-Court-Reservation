@@ -223,7 +223,18 @@ class NUAA(object):
             elif r['m'] == "不在服务时间":
                 log.info(fail_info)
                 self.push_content.append(fail_info)
-                return 0
+                now = (
+                    datetime.utcnow()
+                    .replace(tzinfo=timezone.utc)
+                    .astimezone(timezone(timedelta(hours=8)))
+                )
+                stop_time = datetime.combine(
+                    now.date(), datetime.strptime("21:00:00", "%H:%M:%S").time()
+                ).replace(tzinfo=timezone(timedelta(hours=8)))
+                if now > stop_time:
+                    return -1
+                else:
+                    return 0
             else:  # r['m'] == '预约日期已约满' or r['m'] == '预约日期已被禁用':
                 log.info(fail_info)
                 self.push_content.append(fail_info)
