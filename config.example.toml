@@ -28,10 +28,6 @@
 
   # 通知设置
   [users.notify]
-  # Telegram 推送
-  TG_BOT_TOKEN = "1xxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  TG_USER_ID = "xxxxxxxxx"
-  TG_API_HOST = "xxxxxxxxxx"
   # 微信 Push plus 推送
   PUSH_PLUS_TOKEN = "xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
