@@ -196,8 +196,9 @@ class Notify(object):
             return
         log.info("go-cqhttp 服务启动")
 
-        url = f'{self.push_config.get("CQHTTP_URL")}?access_token={self.push_config.get("CQHTTP_TOKEN")}&{self.push_config.get("CQHTTP_QQ")}&message=标题:{title}\n内容:{content}'
-        response = requests.get(url).json()
+        url = f'{self.push_config.get("CQHTTP_URL")}?{self.push_config.get("CQHTTP_QQ")}&message={title}\n\n{content}'
+        headers = {'Authorization': self.push_config.get("CQHTTP_TOKEN")}
+        response = requests.get(url, headers=headers).json()
 
         if response["status"] == "ok":
             log.info("go-cqhttp 推送成功！")
