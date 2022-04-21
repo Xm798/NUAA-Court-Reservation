@@ -8,6 +8,8 @@ import toml
 import random
 import string
 import uuid
+import os
+import base64
 from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
 from notify import Notify
@@ -24,12 +26,18 @@ log = logging
 def request(*args, **kwargs):
     is_retry = True
     count = 0
-    max_retries = 50
-    sleep_seconds = 3
+    max_retries = 20
+    sleep_seconds = 0.5
+    # proxy = {
+    #     'http': 'http://127.0.0.1:8866',
+    #     'https': 'http://127.0.0.1:8866'
+    # }
+    requests.packages.urllib3.disable_warnings()
     while is_retry and count <= max_retries:
         try:
             s = requests.Session()
-            response = s.request(*args, **kwargs, timeout=2)
+            response = s.request(*args, **kwargs, timeout=1)
+            # response = s.request(*args, **kwargs, timeout=1, proxies=proxy, verify=False)
             is_retry = False
         except Exception as e:
             if count == max_retries:
@@ -44,14 +52,54 @@ def request(*args, **kwargs):
             return response
 
 
-class NUAA(object):
+class Config(object):
+    def __init__(self):
+        self.config: dict = {}
+        self.users: list = {}
+        self.basic: dict = {}
+        project_path = os.path.dirname(__file__)
+        self.config_file = os.path.join(project_path, 'config.toml')
+        self.load_config()   # 加载配置
+
+    def load_config(self):
+        if os.path.exists(self.config_file):
+            try:
+                f = open(self.config_file, 'r', encoding='utf-8')
+                self.config = toml.load(f)
+            except Exception as e:
+                log.error('读取配置文件失败！')
+                log.debug(e)
+                exit()
+        else:
+            log.error('配置文件不存在！')
+            exit()
+
+        self.users = self.config.get('users')
+        self.basic = self.config.get('basic')
+
+        os.environ['COURT_RESERVATION_OCR_API'] = self.basic.get('ocr_api')
+
+    def dump_config(self):
+        try:
+            new_users = {"users": self.users}
+            self.config.update(new_users)
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                toml.dump(self.config, f)
+        except Exception as e:
+            log.error('写入配置文件失败！')
+            log.debug(e)
+        else:
+            log.info('配置文件更新成功！')
+
+
+class App(object):
     def __init__(self, user):
         self.refresh_token: str = user['auth'].get('refresh_token')
         self.access_token: str = user['auth'].get('access_token')
         self.username: str = user['auth'].get('username')
         self.password: str = user['auth'].get('password')
         self.cookie_app: dict = {}
-        self.cookie_ehall: dict = {}
+        self.cookie: dict = {}
         self.name: str = ''
         self.court_id: int = user['court_id']  # 场地类型
         self.court_list: list = user['clout_list']  # 场地列表
@@ -265,7 +313,7 @@ class NUAA(object):
                 log.debug(e)
                 return False
             else:
-                self.cookie_ehall = {
+                self.cookie = {
                     'PHPSESSID': phpsessid,
                     'vjuid': vjuid,
                     'vjvd': vjvd,
@@ -293,7 +341,7 @@ class NUAA(object):
             response = request(
                 'get',
                 'https://ehall3.nuaa.edu.cn/site/user/get-name',
-                cookies=self.cookie_ehall,
+                cookies=self.cookie,
                 headers=headers,
             )
         except Exception as e:
@@ -311,17 +359,53 @@ class NUAA(object):
                 log.debug(e)
                 return
 
+    def captcha(self) -> str:
+        try:
+            timestamp = int(time.time()*1000)
+            url = 'https://ehall3.nuaa.edu.cn/site/login/code?v=' + str(timestamp)
+            headers = {
+                'Accept': 'image/webp,image/png,image/svg+xml,image/*;q=0.8,video/*;q=0.8,*/*;q=0.5',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+                'Referer': 'https://ehall3.nuaa.edu.cn/v2/reserve/m_reserveDetail?id=' + str(self.court_id),
+                'Accept-Encoding': 'gzip, deflate, br'
+            }
+            response = request(
+                'get',
+                url,
+                cookies=self.cookie,
+                headers=headers,
+            )
+            captcha_pic = base64.b64encode(response.content)
+
+        except Exceptions as e:
+            log.error('验证码获取错误。')
+            log.debug(e)
+            return ''
+        else:
+            try:
+                basic_url = os.environ.get('COURT_RESERVATION_OCR_API', 'https://cocr.xm.mk/')
+                url = basic_url + "ocr/b64/text" if basic_url.endswith('/') else basic_url + "/ocr/b64/text"
+                r = request('POST', url, data=captcha_pic)
+                result = r.text
+            except Exceptions as e:
+                log.error('验证码识别出错。')
+                log.debug(e)
+                return ''
+            else:
+                log.info(f'验证码识别成功，{result}')
+                return result
+
     def reserve(self, court_data):
         try:
-            # code = (''.join(random.sample(string.ascii_letters + string.digits, 5))) + str(random.randint(0,9))
+            captcha = self.captcha()
             body = {
                 'resource_id': self.court_id,
-                'code': '',
-                'remarks': "",
-                'deduct_num': "",
+                'code': captcha,
+                'remarks': '',
+                'deduct_num': '',
                 'data': f'[{json.dumps(court_data)}]',
             }
-            print(body)
             body = urlencode(body)
             headers = {
                 'Host': 'ehall3.nuaa.edu.cn',
@@ -338,7 +422,7 @@ class NUAA(object):
                 'post',
                 'https://ehall3.nuaa.edu.cn/site/reservation/launch',
                 data=body,
-                cookies=self.cookie_ehall,
+                cookies=self.cookie,
                 headers=headers,
             )
             response.encoding = 'utf-8'
@@ -354,8 +438,10 @@ class NUAA(object):
                     f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约成功",
                 )
                 return 1
+            elif r['m'] == '验证码错误':
+                log.warning('验证码错误')
+                return 0
             elif r['m'] == "不在服务时间":
-                self._log_push('info', fail_info)
                 now = (
                     datetime.utcnow()
                     .replace(tzinfo=timezone.utc)
@@ -365,17 +451,19 @@ class NUAA(object):
                     now.date(), datetime.strptime("21:00:00", "%H:%M:%S").time()
                 ).replace(tzinfo=timezone(timedelta(hours=8)))
                 if now > stop_time:
+                    self._log_push('info', fail_info)
                     return -1
                 else:
+                    log.info(f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约不在服务时间，正在重试...")
                     return 0
-            else:  # r['m'] == '预约日期已约满' or r['m'] == '预约日期已被禁用':
+            else:
                 self._log_push('info', fail_info)
                 return -1
 
     def launch_reserve(self, court):
         i = self.reserve(court)
         while i == 0:
-            time.sleep(1)
+            time.sleep(0.3)
             i = self.reserve(court)
         return i
 
@@ -398,14 +486,14 @@ class NUAA(object):
             return False
         log.info('获取用户基本信息...')
         self.time_check()
-        # log.info('提交预约申请...')
-        # for court in self.court_list:
-        #     result = self.launch_reserve(court)
-        #     if result == 1:  # 预约成功
-        #         return True
-        #     elif result == -1:  # 预约失败，换个场地
-        #         time.sleep(2)  # 稍微歇会
-        # return False
+        log.info('提交预约申请...')
+        for court in self.court_list:
+            result = self.launch_reserve(court)
+            if result == 1:  # 预约成功
+                return True
+            elif result == -1:  # 预约失败，换个场地
+                time.sleep(0.5)  # 稍微歇会
+        return False
 
     def push(self, status):
         notify = Notify(self.notify_conf)
@@ -421,13 +509,13 @@ class NUAA(object):
 
 
 def main():
-    with open('config.toml', 'r', encoding='utf-8') as f:
-        config = toml.load(f)
+    config = Config()
+    config.load_config()
 
-    for index, user in enumerate(config['users']):
+    for index, user in enumerate(config.users):
         log.info('-------------------------------')
-        log.info('检测到{}个账号，正在执行第{}个'.format(len(config['users']), index + 1))
-        app = NUAA(user)
+        log.info('检测到{}个账号，正在执行第{}个'.format(len(config.users), index + 1))
+        app = App(user)
         status = app.run()
-        log.info('打卡结果推送...')
+        log.info('结果推送...')
         app.push(status)
