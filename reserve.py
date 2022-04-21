@@ -28,16 +28,16 @@ def request(*args, **kwargs):
     count = 0
     max_retries = 20
     sleep_seconds = 0.5
-    # proxy = {
-    #     'http': 'http://127.0.0.1:8866',
-    #     'https': 'http://127.0.0.1:8866'
-    # }
+    proxy = {
+        'http': 'http://127.0.0.1:8866',
+        'https': 'http://127.0.0.1:8866'
+    }
     requests.packages.urllib3.disable_warnings()
     while is_retry and count <= max_retries:
         try:
             s = requests.Session()
-            response = s.request(*args, **kwargs, timeout=1)
-            # response = s.request(*args, **kwargs, timeout=1, proxies=proxy, verify=False)
+            # response = s.request(*args, **kwargs, timeout=1)
+            response = s.request(*args, **kwargs, timeout=2, proxies=proxy, verify=False)
             is_retry = False
         except Exception as e:
             if count == max_retries:
@@ -94,17 +94,21 @@ class Config(object):
 
 class App(object):
     def __init__(self, user):
-        self.refresh_token: str = user['auth'].get('refresh_token')
-        self.access_token: str = user['auth'].get('access_token')
-        self.username: str = user['auth'].get('username')
-        self.password: str = user['auth'].get('password')
-        self.cookie_app: dict = {}
-        self.cookie: dict = {}
-        self.name: str = ''
+        self.auth: dict = user['auth']
+        self.cookie: dict = self.cookie_to_dict(self.auth.get('cookie'))
+        self.refresh_token: str = self.auth.get('refresh_token')
+        self.access_token: str = self.auth.get('access_token')
+        self.username: str = self.auth.get('username')
+        self.password: str = self.auth.get('password')
+        self.imei: str = self.auth.get('imei') if self.auth.get('imei') else str(uuid.uuid1()).upper()
+
         self.court_id: int = user['court_id']  # 场地类型
         self.court_list: list = user['clout_list']  # 场地列表
         self.notify_conf: dict = user['notify']
+
         self.push_content: list = []
+        self.flag_auth_update: bool = False
+        self.flag_abort: bool = False
 
     @staticmethod
     def cookie_to_dict(cookie) -> dict:
@@ -137,7 +141,7 @@ class App(object):
         return content_type, body
 
     @staticmethod
-    def time_check():
+    def time_check() -> None:
         now = (
             datetime.utcnow()
             .replace(tzinfo=timezone.utc)
@@ -151,7 +155,7 @@ class App(object):
             log.info(f'还未到开始时间，等待{delta}秒')
             time.sleep(delta)
 
-    def _log_push(self, level: str, content: str):
+    def _log_push(self, level: str, content: str) -> None:
         if level == 'info':
             log.info(content)
         elif level == 'error':
@@ -189,16 +193,17 @@ class App(object):
             if status.get('m') == '用户已登录':
                 return True
             else:
+                log.info(status)
                 return False
 
-    def login_app(self) -> bool:
+    def login_app(self) -> bool:    # 登录i南航 APP 获取 refresh_token 和 access_token
         try:
             data = {
                 "mobile_model": "iPhone14,2",
                 "mobile_type": "ios",
                 "app_version": "28.1",
                 "mobile_version": "15.4.1",
-                "imei": str(uuid.uuid1()).upper(),  # 随机生成一个 iOS 设备识别码
+                "imei": self.imei,  # 随机生成一个 iOS 设备识别码
             }
             headers = {
                 'Host': 'm.nuaa.edu.cn',
@@ -221,12 +226,12 @@ class App(object):
             uukey = re.search(
                 r'(?<=(UUkey=))[a-zA-Z0-9]+', login_stat.headers['Set-Cookie']
             ).group(0)
-            self.cookie_app = {'eai-sess': eai_sess, 'UUkey': uukey}
+            cookie_app = {'eai-sess': eai_sess, 'UUkey': uukey}
 
             form_data = {
-                'imei': data['imei'],
+                'imei': self.imei,
                 'mobile_type': 'ios',
-                'sid': data['imei'],
+                'sid': self.imei,
                 'username': self.username,
                 'password': self.password,
             }
@@ -245,7 +250,7 @@ class App(object):
                 'https://m.nuaa.edu.cn/a_nuaa/api/login-v2/index',
                 headers=headers,
                 data=body,
-                cookies=self.cookie_app,
+                cookies=cookie_app,
             )
             login_result = r.json()
 
@@ -256,22 +261,22 @@ class App(object):
 
         else:
             if login_result['m'] == '操作成功':
-                log.info(f"{login_result['d']['name']}，登录成功")
+                log.info(f"登录i·南航APP成功")
                 self.refresh_token = login_result['d']['refresh_token']
                 self.access_token = login_result['d']['access_token']
                 return True
             elif login_result['m'] == '账户或密码错误':
-                self._log_push('error', '账户或密码错误，登录i·南航失败')
+                self._log_push('error', '账户或密码错误，登录i·南航APP失败')
                 return False
             elif login_result['m'] == '参数错误':
-                self._log_push('error', '账户密码参数错误，登录i·南航失败，请检查配置')
+                self._log_push('error', '账户密码参数错误，登录i·南航APP失败，请检查配置')
                 return False
             else:
-                self._log_push('error', '登录i·南航失败，未知原因，请查阅 debug 日志')
+                self._log_push('error', '登录i·南航APP失败，未知原因，请查阅 debug 日志')
                 log.debug(login.content.decode('utf-8', errors='ignore'))
                 return False
 
-    def get_ehall_cookie(self) -> bool:
+    def get_cookie(self) -> bool:
         try:
             headers = {
                 'Host': 'ehall3.nuaa.edu.cn',
@@ -327,7 +332,7 @@ class App(object):
                     log.debug(response.headers)
                     return False
 
-    def get_name(self):
+    def get_name(self) -> bool:
         try:
             headers = {
                 'Host': 'ehall3.nuaa.edu.cn',
@@ -347,17 +352,19 @@ class App(object):
         except Exception as e:
             log.info('姓名获取失败')
             log.debug(e)
+            return False
         else:
             response.encoding = 'utf-8'
             r = response.json()
             try:
                 name = r['d'].get('name')
                 number = r['d'].get('number')
-                self.push_content.append(f'账号：{name} {number}')
+                self._log_push('info', f'账号：{name} {number}')
+                return True
             except Exception as e:
                 log.info('姓名获取失败')
                 log.debug(e)
-                return
+                return False
 
     def captcha(self) -> str:
         try:
@@ -467,32 +474,60 @@ class App(object):
             i = self.reserve(court)
         return i
 
-    def run(self):
-        if self.refresh_token and self.access_token:
+    def log_with_password(self):
+        if self.password and self.password:
+            log.info('登录方式：统一身份认证账密')
+            if self.login_app():
+                log.info('账密方式：登录成功')
+                return True
+            else:
+                log.info('账密方式：登录失败')
+                return False
+        return False
+
+    def login(self):
+        log.info('正在登录体育场地预约系统...')
+
+        if self.cookie:
+            log.info('登录方式：办事大厅 Cookie')
+            if self.cookie.get('PHPSESSID'):
+                if self.get_name():
+                    return True
+            else:
+                log.info('Cookie不完整，即将重新获取')
+
+        if self.access_token and self.refresh_token:  # 使用 Token 登录
+            log.info('登录方式：i·南航 Token')
             log.info('正在检查 Token...')
             if not self.check_token():
                 log.info('Token 失效，尝试重新获取...')
-                if not self.login_app():
+                if not self.log_with_password():
                     return False
             else:
-                log.info('Token 检查成功...')
-        else:
-            log.info('没有 Token，尝试重新获取...')
-            if not self.login_app():
-                return False
+                log.info('Token 有效...')
 
         log.info('获取预约系统鉴权信息...')
-        if not self.get_ehall_cookie():
+        if self.get_cookie():
+            log.info('获取用户基本信息...')
+            self.get_name()
+            return True
+        else:
             return False
-        log.info('获取用户基本信息...')
+
+    def run(self):
+        if self.login():
+            log.info('登录预约系统成功...')
+        else:
+            log.info('登录预约系统失败...')
+            return False
         self.time_check()
-        log.info('提交预约申请...')
-        for court in self.court_list:
-            result = self.launch_reserve(court)
-            if result == 1:  # 预约成功
-                return True
-            elif result == -1:  # 预约失败，换个场地
-                time.sleep(0.5)  # 稍微歇会
+        # log.info('提交预约申请...')
+        # for court in self.court_list:
+        #     result = self.launch_reserve(court)
+        #     if result == 1:  # 预约成功
+        #         return True
+        #     elif result == -1:  # 预约失败，换个场地
+        #         time.sleep(0.5)  # 稍微歇会
         return False
 
     def push(self, status):
@@ -506,6 +541,17 @@ class App(object):
         )
         content = "\n".join(self.push_content) + "\n\n" + time_now
         notify.send(title, content)
+
+    def config_auth_update(self) -> dict:  # 返回 config.user.auth 字典
+        auth_update = {
+            'cookie': self.cookie,
+            'refresh_token': self.refresh_token,
+            'access_token': self.access_token,
+            'imei': self.imei
+        }
+        self.auth.update(auth_update)
+        return self.auth
+
 
 
 def main():
