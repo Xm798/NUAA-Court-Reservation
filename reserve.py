@@ -5,6 +5,9 @@ import re
 import time
 import requests
 import toml
+import random
+import string
+import uuid
 from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
 from notify import Notify
@@ -43,10 +46,12 @@ def request(*args, **kwargs):
 
 class NUAA(object):
     def __init__(self, user):
-        self.auth: dict = user['auth']
-        self.cookie_ehall: dict = (
-            self.cookie_to_dict(user['cookie']) if user['cookie'] else {}
-        )
+        self.refresh_token: str = user['auth'].get('refresh_token')
+        self.access_token: str = user['auth'].get('access_token')
+        self.username: str = user['auth'].get('username')
+        self.password: str = user['auth'].get('password')
+        self.cookie_app: dict = {}
+        self.cookie_ehall: dict = {}
         self.name: str = ''
         self.court_id: int = user['court_id']  # 场地类型
         self.court_list: list = user['clout_list']  # 场地列表
@@ -62,9 +67,26 @@ class NUAA(object):
                 )
         except Exception as e:
             log.error('Cookie 格式有误，请检查')
+            log.debug(e)
             return None
         else:
             return cookie
+
+    @staticmethod
+    def encode_multipart_formdata(fields):
+        boundary = "Boundary+" + ''.join(random.sample('0123456789ABCDEF', 16))
+        crlf = '\r\n'
+        li = []
+        for (key, value) in fields.items():
+            li.append('--' + boundary)
+            li.append('Content-Disposition: form-data; name="%s"' % key)
+            li.append('')
+            li.append(value)
+        li.append('--' + boundary + '--')
+        li.append('')
+        body = crlf.join(li)
+        content_type = 'multipart/form-data; boundary=%s' % boundary
+        return content_type, body
 
     @staticmethod
     def time_check():
@@ -81,17 +103,137 @@ class NUAA(object):
             log.info(f'还未到开始时间，等待{delta}秒')
             time.sleep(delta)
 
-    def get_ehall_cookie(self):
+    def _log_push(self, level: str, content: str):
+        if level == 'info':
+            log.info(content)
+        elif level == 'error':
+            log.error(content)
+        elif level == 'warning':
+            log.warning(content)
+        else:
+            log.debug(content)
+        self.push_content.append(content)
+
+    def check_token(self) -> bool:
+        try:
+            headers = {
+                'Host': 'm.nuaa.edu.cn',
+                'Connection': 'keep-alive',
+                'Accept': '*/*',
+                'User-Agent': 'MobileCampus/2.8 (iPhone; iOS 15.4.1; Scale/3.00)',
+                'Accept-Language': 'zh-Hans-CN;q=1, en-CN;q=0.9, zh-Hant-CN;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+            }
+            params = {'token': self.access_token, 'xgh': self.username}
+            r = request(
+                'get',
+                'https://m.nuaa.edu.cn/nuaaappv2/wap/default/check-token',
+                headers=headers,
+                params=params,
+            )
+            status = r.json()
+        except Exception as e:
+            self._log_push('error', '检查登录状态失败，未知原因，请查阅 debug 日志')
+            log.debug(e)
+            return False
+        else:
+            log.info(status.get('m'))
+            if status.get('m') == '用户已登录':
+                return True
+            else:
+                return False
+
+    def login_app(self) -> bool:
+        try:
+            data = {
+                "mobile_model": "iPhone14,2",
+                "mobile_type": "ios",
+                "app_version": "28.1",
+                "mobile_version": "15.4.1",
+                "imei": str(uuid.uuid1()).upper(),  # 随机生成一个 iOS 设备识别码
+            }
+            headers = {
+                'Host': 'm.nuaa.edu.cn',
+                'Content-Type': 'application/json',
+                'Connection': 'keep-alive',
+                'Accept': '*/*',
+                'User-Agent': 'MobileCampus/2.8 (iPhone; iOS 15.4.1; Scale/3.00)',
+                'Accept-Language': 'zh-Hans-CN;q=1, en-CN;q=0.9, zh-Hant-CN;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+            }
+            login_stat = request(
+                'post',
+                'https://m.nuaa.edu.cn/nuaaappv2/wap/install-stat/insert',
+                headers=headers,
+                json=data,
+            )
+            eai_sess = re.search(
+                r'(?<=(eai-sess=))[a-zA-Z0-9]+', login_stat.headers['Set-Cookie']
+            ).group(0)
+            uukey = re.search(
+                r'(?<=(UUkey=))[a-zA-Z0-9]+', login_stat.headers['Set-Cookie']
+            ).group(0)
+            self.cookie_app = {'eai-sess': eai_sess, 'UUkey': uukey}
+
+            form_data = {
+                'imei': data['imei'],
+                'mobile_type': 'ios',
+                'sid': data['imei'],
+                'username': self.username,
+                'password': self.password,
+            }
+            content_type, body = self.encode_multipart_formdata(form_data)
+            headers = {
+                'Host': 'm.nuaa.edu.cn',
+                'Content-Type': content_type,
+                'Connection': 'keep-alive',
+                'Accept': '*/*',
+                'User-Agent': 'MobileCampus/2.8 (iPhone; iOS 15.4.1; Scale/3.00)',
+                'Accept-Language': 'zh-Hans-CN;q=1, en-CN;q=0.9, zh-Hant-CN;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+            }
+            r = request(
+                'post',
+                'https://m.nuaa.edu.cn/a_nuaa/api/login-v2/index',
+                headers=headers,
+                data=body,
+                cookies=self.cookie_app,
+            )
+            login_result = r.json()
+
+        except Exception as e:
+            self._log_push('error', '登录i·南航失败，未知原因，请查阅 debug 日志')
+            log.debug(e)
+            return False
+
+        else:
+            if login_result['m'] == '操作成功':
+                log.info(f"{login_result['d']['name']}，登录成功")
+                self.refresh_token = login_result['d']['refresh_token']
+                self.access_token = login_result['d']['access_token']
+                return True
+            elif login_result['m'] == '账户或密码错误':
+                self._log_push('error', '账户或密码错误，登录i·南航失败')
+                return False
+            elif login_result['m'] == '参数错误':
+                self._log_push('error', '账户密码参数错误，登录i·南航失败，请检查配置')
+                return False
+            else:
+                self._log_push('error', '登录i·南航失败，未知原因，请查阅 debug 日志')
+                log.debug(login.content.decode('utf-8', errors='ignore'))
+                return False
+
+    def get_ehall_cookie(self) -> bool:
         try:
             headers = {
                 'Host': 'ehall3.nuaa.edu.cn',
                 'Accept-Encoding': 'gzip, deflate, br',
                 'deviceType': 'ios',
-                'refresh_token': self.auth.get('refresh_token'),
+                'refresh_token': self.refresh_token,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
-                'token': self.auth.get('access_token'),
-                'access_token': self.auth.get('access_token'),
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
+                'token': self.access_token,
+                'access_token': self.access_token,
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
             }
             response = request(
@@ -101,8 +243,7 @@ class NUAA(object):
                 allow_redirects=False,
             )
         except Exception as e:
-            log.error('登录预约系统失败，未知原因，请查阅 debug 日志')
-            self.push_content.append('登录预约系统失败，未知原因，请查阅 debug 日志')
+            self._log_push('error', '登录预约系统失败，未知原因，请查阅 debug 日志')
             log.debug(e)
             return False
         else:
@@ -120,8 +261,7 @@ class NUAA(object):
                     r'(?<=(PHPSESSID=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
                 ).group(0)
             except Exception as e:
-                log.error('登录预约系统失败，可能是账号失效，请查阅 debug 日志')
-                self.push_content.append('登录预约系统失败，可能是账号失效，请查阅 debug 日志')
+                self._log_push('error', '登录预约系统失败，可能是账号失效，请查阅 debug 日志')
                 log.debug(e)
                 return False
             else:
@@ -135,8 +275,7 @@ class NUAA(object):
                     log.info('获取预约系统鉴权信息成功')
                     return True
                 else:
-                    log.error('获取预约系统鉴权信息失败，请查阅 debug 日志')
-                    self.push_content.append('获取预约系统鉴权信息失败，请查阅 debug 日志')
+                    self._log_push('error', '获取预约系统鉴权信息失败，请查阅 debug 日志')
                     log.debug(response.headers)
                     return False
 
@@ -146,7 +285,7 @@ class NUAA(object):
                 'Host': 'ehall3.nuaa.edu.cn',
                 'Accept-Encoding': 'gzip, deflate, br',
                 'Accept': 'application/json, text/plain, */*',
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
                 'Referer': 'https://ehall3.nuaa.edu.cn/v2/reserve/m_myReserve',
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
                 'X-Requested-With': 'XMLHttpRequest',
@@ -163,28 +302,26 @@ class NUAA(object):
         else:
             response.encoding = 'utf-8'
             r = response.json()
-            if r['m'] == "该操作需要登录，请登录后重试":
-                log.error('鉴权信息失效，登录失败！')
-                return 'NeedLogin'
-            else:
-                try:
-                    name = r['d'].get('name')
-                    number = r['d'].get('number')
-                    self.push_content.append(f'账号：{name} {number}')
-                except Exception as e:
-                    log.info('姓名获取失败')
-                    log.debug(e)
-                    return
+            try:
+                name = r['d'].get('name')
+                number = r['d'].get('number')
+                self.push_content.append(f'账号：{name} {number}')
+            except Exception as e:
+                log.info('姓名获取失败')
+                log.debug(e)
+                return
 
     def reserve(self, court_data):
         try:
+            # code = (''.join(random.sample(string.ascii_letters + string.digits, 5))) + str(random.randint(0,9))
             body = {
                 'resource_id': self.court_id,
-                'code': "",
+                'code': '',
                 'remarks': "",
                 'deduct_num': "",
                 'data': f'[{json.dumps(court_data)}]',
             }
+            print(body)
             body = urlencode(body)
             headers = {
                 'Host': 'ehall3.nuaa.edu.cn',
@@ -195,7 +332,7 @@ class NUAA(object):
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Origin': 'https://ehall3.nuaa.edu.cn',
                 'Referer': 'https://ehall3.nuaa.edu.cn/v2/reserve/m_reserveDetail?id=19',
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
             }
             response = request(
                 'post',
@@ -206,23 +343,19 @@ class NUAA(object):
             )
             response.encoding = 'utf-8'
         except Exception as e:
-            log.error('提交预约失败！详情见 debug 日志。')
-            self.push_content.append('提交预约失败！详情见 debug 日志。')
+            self._log_push('error', '提交预约失败！详情见 debug 日志。')
             log.debug(e)
         else:
             r = response.json()
             fail_info = f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约失败，原因为{r['m']}"
             if r['m'] == '操作成功':
-                log.info(
-                    f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约成功"
-                )
-                self.push_content.append(
-                    f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约成功"
+                self._log_push(
+                    'info',
+                    f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约成功",
                 )
                 return 1
             elif r['m'] == "不在服务时间":
-                log.info(fail_info)
-                self.push_content.append(fail_info)
+                self._log_push('info', fail_info)
                 now = (
                     datetime.utcnow()
                     .replace(tzinfo=timezone.utc)
@@ -236,8 +369,7 @@ class NUAA(object):
                 else:
                     return 0
             else:  # r['m'] == '预约日期已约满' or r['m'] == '预约日期已被禁用':
-                log.info(fail_info)
-                self.push_content.append(fail_info)
+                self._log_push('info', fail_info)
                 return -1
 
     def launch_reserve(self, court):
@@ -248,25 +380,32 @@ class NUAA(object):
         return i
 
     def run(self):
-        if not self.cookie_ehall:
-            log.info('未配置 COOKIE，尝试获取预约系统鉴权信息...')
-            if not self.get_ehall_cookie():
+        if self.refresh_token and self.access_token:
+            log.info('正在检查 Token...')
+            if not self.check_token():
+                log.info('Token 失效，尝试重新获取...')
+                if not self.login_app():
+                    return False
+            else:
+                log.info('Token 检查成功...')
+        else:
+            log.info('没有 Token，尝试重新获取...')
+            if not self.login_app():
                 return False
+
+        log.info('获取预约系统鉴权信息...')
+        if not self.get_ehall_cookie():
+            return False
         log.info('获取用户基本信息...')
-        if self.get_name() == 'NeedLogin':
-            log.info('COOKIE 失效，尝试获取预约系统鉴权信息...')
-            self.push_content.append('COOKIE 失效，尝试获取预约系统鉴权信息...')
-            if not self.get_ehall_cookie():
-                return False
         self.time_check()
-        log.info('提交预约申请...')
-        for court in self.court_list:
-            result = self.launch_reserve(court)
-            if result == 1:  # 预约成功
-                return True
-            elif result == -1:  # 预约失败，换个场地
-                time.sleep(0.5)  # 稍微歇会
-        return False
+        # log.info('提交预约申请...')
+        # for court in self.court_list:
+        #     result = self.launch_reserve(court)
+        #     if result == 1:  # 预约成功
+        #         return True
+        #     elif result == -1:  # 预约失败，换个场地
+        #         time.sleep(2)  # 稍微歇会
+        # return False
 
     def push(self, status):
         notify = Notify(self.notify_conf)
