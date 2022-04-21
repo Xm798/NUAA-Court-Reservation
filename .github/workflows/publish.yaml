@@ -27,7 +27,7 @@ jobs:
           sudo -E apt-get install zip
       - name: Pack serverless file
         run: |
-          mv -f ./config.example.toml ./config.toml
+          mv -f ./config.example.yaml ./config.yaml
           zip -r "release-serverless.zip" . -x "*.pyc" -x "./bin/*" -x "*.so" -x ".git/*" -x ".github/*" -x ".gitignore" -x "icon.ico" -x "resources_refresh.py" -x "resources.md" -x "./docs/*"
       - name: Upload
         uses: actions/upload-artifact@v3
@@ -63,7 +63,7 @@ jobs:
           pyinstaller -F -i icon.ico -n "Court_Reservation.exe" index.py
       - name: Pack
         run: |
-          Move-Item -Force -Path .\config.example.toml -Destination .\config.toml
+          Move-Item -Force -Path .\config.example.yaml -Destination .\config.yaml
           Get-ChildItem -Path .\dist\*.exe, .\config.toml, .\README.md | Compress-Archive -DestinationPath .\release-Windows.zip
       - name: Upload
         uses: actions/upload-artifact@v3
