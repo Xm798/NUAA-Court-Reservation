@@ -4,12 +4,12 @@ import logging
 import re
 import time
 import requests
-import toml
 import random
 import string
 import uuid
 import os
 import base64
+import ruamel.yaml
 from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
 from notify import Notify
@@ -21,6 +21,7 @@ logging.basicConfig(
 )
 
 log = logging
+yaml = ruamel.yaml.YAML()
 
 
 def request(*args, **kwargs):
@@ -28,16 +29,15 @@ def request(*args, **kwargs):
     count = 0
     max_retries = 20
     sleep_seconds = 0.5
-    proxy = {
-        'http': 'http://127.0.0.1:8866',
-        'https': 'http://127.0.0.1:8866'
-    }
+    # proxy = {'http': 'http://127.0.0.1:8866', 'https': 'http://127.0.0.1:8866'}
     requests.packages.urllib3.disable_warnings()
     while is_retry and count <= max_retries:
         try:
             s = requests.Session()
-            # response = s.request(*args, **kwargs, timeout=1)
-            response = s.request(*args, **kwargs, timeout=2, proxies=proxy, verify=False)
+            response = s.request(*args, **kwargs, timeout=1)
+            # response = s.request(
+            #     *args, **kwargs, timeout=2, proxies=proxy, verify=False
+            # )
             is_retry = False
         except Exception as e:
             if count == max_retries:
@@ -55,17 +55,32 @@ def request(*args, **kwargs):
 class Config(object):
     def __init__(self):
         self.config: dict = {}
-        self.users: list = {}
-        self.basic: dict = {}
+
+        self.auth: dict = {}
+        self.court_id: str = ''
+        self.court_list: list = []
+        self.notify: dict = {}
+
         project_path = os.path.dirname(__file__)
-        self.config_file = os.path.join(project_path, 'config.toml')
-        self.load_config()   # 加载配置
+        self.config_file = os.path.join(project_path, 'config.yaml')
+        self.load_config()  # 加载配置
+
+    def __getitem__(self, item):
+        if item in self.__dict__:
+            return self.__dict__[item]
+
+    def __setitem__(self, key, value):
+        self.__dict__[key] = value
+
+    def __delitem__(self, key):
+        del self.__dict__[key]
 
     def load_config(self):
         if os.path.exists(self.config_file):
             try:
                 f = open(self.config_file, 'r', encoding='utf-8')
-                self.config = toml.load(f)
+                data = f.read()
+                self.config = yaml.load(data)
             except Exception as e:
                 log.error('读取配置文件失败！')
                 log.debug(e)
@@ -74,17 +89,18 @@ class Config(object):
             log.error('配置文件不存在！')
             exit()
 
-        self.users = self.config.get('users')
-        self.basic = self.config.get('basic')
-
-        os.environ['COURT_RESERVATION_OCR_API'] = self.basic.get('ocr_api')
+        self.auth = self.config.get('auth')
+        self.court_id = self.config.get('court_id')
+        self.court_list = self.config.get('court_list')
+        self.notify = self.config.get('notify')
+        os.environ['COURT_RESERVATION_OCR_API'] = self.config.get('ocr_api')
 
     def dump_config(self):
         try:
-            new_users = {"users": self.users}
-            self.config.update(new_users)
+            self.config['auth'].update(self.auth)
             with open(self.config_file, 'w', encoding='utf-8') as f:
-                toml.dump(self.config, f)
+                yaml.dump(self.config, f)
+
         except Exception as e:
             log.error('写入配置文件失败！')
             log.debug(e)
@@ -93,18 +109,22 @@ class Config(object):
 
 
 class App(object):
-    def __init__(self, user):
-        self.auth: dict = user['auth']
+    def __init__(self, config):
+        self.auth: dict = config['auth']
         self.cookie: dict = self.cookie_to_dict(self.auth.get('cookie'))
         self.refresh_token: str = self.auth.get('refresh_token')
         self.access_token: str = self.auth.get('access_token')
         self.username: str = self.auth.get('username')
         self.password: str = self.auth.get('password')
-        self.imei: str = self.auth.get('imei') if self.auth.get('imei') else str(uuid.uuid1()).upper()
+        self.imei: str = (
+            self.auth.get('imei')
+            if self.auth.get('imei')
+            else str(uuid.uuid1()).upper()
+        )
 
-        self.court_id: int = user['court_id']  # 场地类型
-        self.court_list: list = user['clout_list']  # 场地列表
-        self.notify_conf: dict = user['notify']
+        self.court_id: int = config['court_id']  # 场地类型
+        self.court_list: list = config['court_list']  # 场地列表
+        self.notify_conf: dict = config['notify']
 
         self.push_content: list = []
         self.flag_auth_update: bool = False
@@ -123,6 +143,15 @@ class App(object):
             return None
         else:
             return cookie
+
+    @staticmethod
+    def dict_to_str(cookie) -> str:
+        if isinstance(cookie, dict):
+            cookie_str = ""
+            for i, (k, v) in enumerate(cookie.items()):
+                append = f"{k}={v}" if i == len(cookie) - 1 else f"{k}={v}; "
+                cookie_str += append
+            return cookie_str
 
     @staticmethod
     def encode_multipart_formdata(fields):
@@ -196,7 +225,7 @@ class App(object):
                 log.info(status)
                 return False
 
-    def login_app(self) -> bool:    # 登录i南航 APP 获取 refresh_token 和 access_token
+    def login_app(self) -> bool:  # 登录i南航 APP 获取 refresh_token 和 access_token
         try:
             data = {
                 "mobile_model": "iPhone14,2",
@@ -368,14 +397,15 @@ class App(object):
 
     def captcha(self) -> str:
         try:
-            timestamp = int(time.time()*1000)
+            timestamp = int(time.time() * 1000)
             url = 'https://ehall3.nuaa.edu.cn/site/login/code?v=' + str(timestamp)
             headers = {
                 'Accept': 'image/webp,image/png,image/svg+xml,image/*;q=0.8,video/*;q=0.8,*/*;q=0.5',
                 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
-                'Referer': 'https://ehall3.nuaa.edu.cn/v2/reserve/m_reserveDetail?id=' + str(self.court_id),
-                'Accept-Encoding': 'gzip, deflate, br'
+                'Referer': 'https://ehall3.nuaa.edu.cn/v2/reserve/m_reserveDetail?id='
+                + str(self.court_id),
+                'Accept-Encoding': 'gzip, deflate, br',
             }
             response = request(
                 'get',
@@ -391,8 +421,14 @@ class App(object):
             return ''
         else:
             try:
-                basic_url = os.environ.get('COURT_RESERVATION_OCR_API', 'https://cocr.xm.mk/')
-                url = basic_url + "ocr/b64/text" if basic_url.endswith('/') else basic_url + "/ocr/b64/text"
+                basic_url = os.environ.get(
+                    'COURT_RESERVATION_OCR_API', 'https://cocr.xm.mk/'
+                )
+                url = (
+                    basic_url + "ocr/b64/text"
+                    if basic_url.endswith('/')
+                    else basic_url + "/ocr/b64/text"
+                )
                 r = request('POST', url, data=captcha_pic)
                 result = r.text
             except Exceptions as e:
@@ -461,7 +497,9 @@ class App(object):
                     self._log_push('info', fail_info)
                     return -1
                 else:
-                    log.info(f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约不在服务时间，正在重试...")
+                    log.info(
+                        f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约不在服务时间，正在重试..."
+                    )
                     return 0
             else:
                 self._log_push('info', fail_info)
@@ -521,13 +559,13 @@ class App(object):
             log.info('登录预约系统失败...')
             return False
         self.time_check()
-        # log.info('提交预约申请...')
-        # for court in self.court_list:
-        #     result = self.launch_reserve(court)
-        #     if result == 1:  # 预约成功
-        #         return True
-        #     elif result == -1:  # 预约失败，换个场地
-        #         time.sleep(0.5)  # 稍微歇会
+        log.info('提交预约申请...')
+        for court in self.court_list:
+            result = self.launch_reserve(court)
+            if result == 1:  # 预约成功
+                return True
+            elif result == -1:  # 预约失败，换个场地
+                time.sleep(0.5)  # 稍微歇会
         return False
 
     def push(self, status):
@@ -544,24 +582,21 @@ class App(object):
 
     def config_auth_update(self) -> dict:  # 返回 config.user.auth 字典
         auth_update = {
-            'cookie': self.cookie,
+            'cookie': self.dict_to_str(self.cookie),
             'refresh_token': self.refresh_token,
             'access_token': self.access_token,
-            'imei': self.imei
+            'imei': self.imei,
         }
         self.auth.update(auth_update)
         return self.auth
 
 
-
 def main():
     config = Config()
-    config.load_config()
-
-    for index, user in enumerate(config.users):
-        log.info('-------------------------------')
-        log.info('检测到{}个账号，正在执行第{}个'.format(len(config.users), index + 1))
-        app = App(user)
-        status = app.run()
-        log.info('结果推送...')
-        app.push(status)
+    log.info('-------------------------------')
+    app = App(config)
+    status = app.run()
+    log.info('结果推送...')
+    config.auth.update(app.config_auth_update())
+    app.push(status)
+    config.dump_config()

@@ -1,0 +1,28 @@
+# 验证码识别 API
+ocr_api: https://cocr.xm.mk/
+
+# 登录信息
+auth:
+   # 预约系统 Cookie
+  cookie: vjuid=xxxxx; vjvd=xxxxxxxxxxxxxxxxx; vt=xxxxx; PHPSESSID=xxxxxx
+   # i·南航 APP Token
+  access_token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  refresh_token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   # 统一身份认证系统账密
+  username: 011710101
+  password: password
+  imei:  # 模拟设备信息，无需手动填写
+
+# 场地类型
+court_id: 19
+
+# 预约的场地列表
+court_list:
+- date: '2022-04-19'
+  period: 1833
+  sub_resource_id: 12270
+
+# 通知设置
+notify:
+  # 微信 Push plus 推送
+  PUSH_PLUS_TOKEN: xxxxxxxxxxxxxxxxxxxxxxxxxxxx
