@@ -1,5 +1,7 @@
 # 验证码识别 API
 ocr_api: https://cocr.xm.mk/
+# 日志等级
+log_level: info
 
 # 登录信息
 auth:

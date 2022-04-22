@@ -38,7 +38,7 @@ class Config(object):
                 data = f.read()
                 self.config = yaml.load(data)
             except Exception as e:
-                log.error('读取配置文件失败！')
+                log.error('配置文件加载失败！')
                 log.error(e)
                 exit()
         else:
@@ -106,15 +106,14 @@ def request(*args, **kwargs):
             return response
 
 
-logging.Formatter.converter = beijing_time
-
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(message)s',
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
 )
 
-log = logging
+logging.Formatter.converter = beijing_time
+log = logging.getLogger()
 
 start_time = datetime.combine(
     time_now().date(), datetime.strptime("07:00:00", "%H:%M:%S").time()
@@ -125,3 +124,8 @@ stop_time = datetime.combine(
 ).replace(tzinfo=timezone(timedelta(hours=8)))
 
 config = Config()
+
+# 设置日志等级
+if config.config.get('log_level'):
+    if config.config.get('log_level').lower() == 'debug':
+        log.setLevel(logging.DEBUG)
