@@ -64,7 +64,7 @@ jobs:
       - name: Pack
         run: |
           Move-Item -Force -Path .\config.example.yaml -Destination .\config.yaml
-          Get-ChildItem -Path .\dist\*.exe, .\config.toml, .\README.md | Compress-Archive -DestinationPath .\release-Windows.zip
+          Get-ChildItem -Path .\dist\*.exe, .\config.yaml, .\resources.json .\README.md | Compress-Archive -DestinationPath .\release-Windows.zip
       - name: Upload
         uses: actions/upload-artifact@v3
         with:
