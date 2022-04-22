@@ -26,11 +26,8 @@ class Notify(object):
             'DD_BOT_TOKEN': '',  # 钉钉机器人的 DD_BOT_TOKEN
             'FSKEY': '',  # 飞书机器人的 FSKEY
             'CQHTTP_URL': '',  # go-cqhttp
-            # 推送到个人QQ：http://127.0.0.1/send_private_msg
-            # 群：http://127.0.0.1/send_group_msg
+            'CQHTTP_MESSAGE_TYPE': '',  # cqhttp 要发送的用户 private /群 group
             'CQHTTP_QQ': '',  # go-cqhttp 的推送群或用户
-            # CQHTTP_URL 设置 /send_private_msg 时填入 user_id=个人QQ
-            #               /send_group_msg   时填入 group_id=QQ群
             'CQHTTP_TOKEN': '',  # go-cqhttp 的 access_token
             'GOTIFY_URL': '',  # gotify地址,如https://push.example.de:8080
             'GOTIFY_TOKEN': '',  # gotify的消息应用token
@@ -125,8 +122,10 @@ class Notify(object):
 
         if response["code"] == 200:
             log.info("bark 推送成功！")
+            log.debug(response)
         else:
             log.error("bark 推送失败！")
+            log.error(response)
 
     def dingding_bot(self, title: str, content: str) -> None:
         """
@@ -158,8 +157,10 @@ class Notify(object):
 
         if not response["errcode"]:
             log.info("钉钉机器人 推送成功！")
+            log.debug(response)
         else:
             log.error("钉钉机器人 推送失败！")
+            log.error(response)
 
     def feishu_bot(self, title: str, content: str) -> None:
         """
@@ -176,8 +177,10 @@ class Notify(object):
 
         if response.get("StatusCode") == 0:
             log.info("飞书 推送成功！")
+            log.debug(response)
         else:
-            log.error("飞书 推送失败！错误信息如下：\n", response)
+            log.error("飞书 推送失败！")
+            log.error(response)
 
     def go_cqhttp(self, title: str, content: str) -> None:
         """
@@ -190,14 +193,39 @@ class Notify(object):
             return
         log.info("go-cqhttp 服务启动")
 
-        url = f'{self.push_config.get("CQHTTP_URL")}?{self.push_config.get("CQHTTP_QQ")}&message={title}\n\n{content}'
+        url = self.push_config.get("CQHTTP_URL")
+
         headers = {'Authorization': self.push_config.get("CQHTTP_TOKEN")}
-        response = requests.get(url, headers=headers).json()
+
+        if self.push_config.get("CQHTTP_MESSAGE_TYPE") == "group":
+            url = (
+                f'{url}send_group_msg'
+                if url.endswith('/')
+                else f'{url}/send_group_msg'
+            )
+            data = {
+                "group_id": self.push_config.get("CQHTTP_QQ"),
+                "message": f'{title}\n\n{content}',
+            }
+        else:
+            url = (
+                f'{url}send_private_msg'
+                if url.endswith('/')
+                else f'{url}/send_private_msg'
+            )
+            data = {
+                "user_id": self.push_config.get("CQHTTP_QQ"),
+                "message": f'{title}\n\n{content}',
+            }
+
+        response = requests.post(url, headers=headers, data=data).json()
 
         if response["status"] == "ok":
             log.info("go-cqhttp 推送成功！")
+            log.debug(response)
         else:
             log.error("go-cqhttp 推送失败！")
+            log.error(response)
 
     def gotify(self, title: str, content: str) -> None:
         """
@@ -220,8 +248,10 @@ class Notify(object):
 
         if response.get("id"):
             log.info("gotify 推送成功！")
+            log.debug(response)
         else:
             log.error("gotify 推送失败！")
+            log.error(response)
 
     def igot(self, title: str, content: str) -> None:
         """
@@ -239,8 +269,10 @@ class Notify(object):
 
         if response["ret"] == 0:
             log.info("iGot 推送成功！")
+            log.debug(response)
         else:
-            log.error(f'iGot 推送失败！{response["errMsg"]}')
+            log.error(f'iGot 推送失败！')
+            log.error(response)
 
     def server_chan(self, title: str, content: str) -> None:
         """
@@ -260,8 +292,10 @@ class Notify(object):
 
         if response.get("errno") == 0 or response.get("code") == 0:
             log.info("server 酱推送成功！")
+            log.debug(response)
         else:
-            log.error(f'server 酱推送失败！错误码：{response["message"]}')
+            log.error('server 酱推送失败！')
+            log.error(response)
 
     def pushplus_bot(self, title: str, content: str) -> None:
         """
@@ -286,9 +320,11 @@ class Notify(object):
 
         if response["code"] == 200:
             log.info("PUSHPLUS 推送成功！")
+            log.debug(response)
 
         else:
             log.error("PUSHPLUS 推送失败！")
+            log.error(response)
 
     def qmsg_bot(self, title: str, content: str) -> None:
         """
@@ -307,8 +343,10 @@ class Notify(object):
 
         if response["code"] == 0:
             log.info("qmsg 推送成功！")
+            log.debug(response)
         else:
-            log.error(f'qmsg 推送失败！{response["reason"]}')
+            log.error(f'qmsg 推送失败！')
+            log.error(response)
 
     def wecom_app(self, title: str, content: str) -> None:
         """
@@ -341,8 +379,10 @@ class Notify(object):
 
         if response == "ok":
             log.info("企业微信推送成功！")
+            log.debug(response)
         else:
-            log.error("企业微信推送失败！错误信息如下：\n", response)
+            log.error("企业微信推送失败！")
+            log.error(response)
 
     class WeCom:
         def __init__(self, corpid, corpsecret, agentid):
@@ -422,8 +462,10 @@ class Notify(object):
 
         if response["errcode"] == 0:
             log.info("企业微信机器人推送成功！")
+            log.debug(response)
         else:
             log.error("企业微信机器人推送失败！")
+            log.error(response)
 
     def telegram_bot(self, title: str, content: str) -> None:
         """
@@ -470,8 +512,10 @@ class Notify(object):
 
         if response["ok"]:
             log.info("Telegram 推送成功！")
+            log.debug(response)
         else:
             log.error("Telegram 推送失败！")
+            log.error(response)
 
     def send(self, title: str, content: str) -> None:
         if not content:

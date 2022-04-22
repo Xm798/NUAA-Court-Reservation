@@ -12,7 +12,7 @@ auth:
    # i·南航 APP Token
   access_token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   refresh_token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-  username: 011710101
+  username: '011710101'
    # 统一身份认证系统密码
   password: password
   imei:  # 模拟设备信息，应为一个合法的UUID(大写)或留空
@@ -33,14 +33,13 @@ notify:
   # 微信 Push plus 推送
   PUSH_PLUS_TOKEN: xxxxxxxxxxxxxxxxxxxxxxxxxxxx
   # Bark 推送
-  BARK_PUSH': '',  # bark IP 或设备码，例：https://api.day.app/DxHcxxxxxRxxxxxxcm/
+  BARK_PUSH':  # Bark IP 或设备码，例：https://api.day.app/DxHcxxxxxRxxxxxxcm/
   # QQ 推送
-  CQHTTP_URL': '',  # go-cqhttp 推送到个人QQ：http://127.0.0.1/send_private_msg，群：http://127.0.0.1/send_group_msg
-  CQHTTP_QQ': '',  # go-cqhttp 的推送群或用户，CQHTTP_URL 设置 /send_private_msg 时填入 user_id=个人QQ，/send_group_msg 时填入 group_id=QQ群
-  CQHTTP_TOKEN': '',  # go-cqhttp 的 token
-  # Pushplus 推送
-  PUSH_PLUS_TOKEN': '',  # push+ 微信推送的用户令牌
+  CQHTTP_URL:                 # go-cqhttp API
+  CQHTTP_MESSAGE_TYPE:        # group：发送到群聊；private：发送到私聊
+  CQHTTP_QQ:                  # 群号 / QQ号
+  CQHTTP_TOKEN:               # Token
   # Telegram 推送
-  TG_BOT_TOKEN': '',  # tg 机器人的 TG_BOT_TOKEN，例：1407203283:AAG9rt-6RDaaX0HBLZQq0laNOh898iFYaRQ
-  TG_USER_ID': '',  # tg 机器人的 TG_USER_ID，例：1434078534
-  TG_API_HOST': '',  # tg 代理 api
+  TG_BOT_TOKEN:       # Telegram 机器人的 TG_BOT_TOKEN，例：1407203283:AAG9rt-6RDaaX0HBLZQq0laNOh898iFYaRQ
+  TG_USER_ID:         # Telegram 机器人的 TG_USER_ID，例：1434078534
+  TG_API_HOST:        # Telegram 代理 api
