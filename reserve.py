@@ -1,111 +1,14 @@
 # encoding=utf-8
 import json
-import logging
 import re
-import time
-import requests
-import random
-import string
-import uuid
 import os
+import time
+import random
+import uuid
 import base64
-import ruamel.yaml
 from urllib.parse import urlencode
-from datetime import datetime, timedelta, timezone
 from notify import Notify
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-)
-
-log = logging
-yaml = ruamel.yaml.YAML()
-
-
-def request(*args, **kwargs):
-    is_retry = True
-    count = 0
-    max_retries = 20
-    sleep_seconds = 0.5
-    # proxy = {'http': 'http://127.0.0.1:8866', 'https': 'http://127.0.0.1:8866'}
-    requests.packages.urllib3.disable_warnings()
-    while is_retry and count <= max_retries:
-        try:
-            s = requests.Session()
-            response = s.request(*args, **kwargs, timeout=1)
-            # response = s.request(
-            #     *args, **kwargs, timeout=2, proxies=proxy, verify=False
-            # )
-            is_retry = False
-        except Exception as e:
-            if count == max_retries:
-                raise e
-            log.error(f'Request failed: {e}')
-            count += 1
-            log.info(
-                f'Trying to reconnect in {sleep_seconds} seconds ({count}/{max_retries})...'
-            )
-            time.sleep(sleep_seconds)
-        else:
-            return response
-
-
-class Config(object):
-    def __init__(self):
-        self.config: dict = {}
-
-        self.auth: dict = {}
-        self.court_id: str = ''
-        self.court_list: list = []
-        self.notify: dict = {}
-
-        project_path = os.path.dirname(__file__)
-        self.config_file = os.path.join(project_path, 'config.yaml')
-        self.load_config()  # 加载配置
-
-    def __getitem__(self, item):
-        if item in self.__dict__:
-            return self.__dict__[item]
-
-    def __setitem__(self, key, value):
-        self.__dict__[key] = value
-
-    def __delitem__(self, key):
-        del self.__dict__[key]
-
-    def load_config(self):
-        if os.path.exists(self.config_file):
-            try:
-                f = open(self.config_file, 'r', encoding='utf-8')
-                data = f.read()
-                self.config = yaml.load(data)
-            except Exception as e:
-                log.error('读取配置文件失败！')
-                log.debug(e)
-                exit()
-        else:
-            log.error('配置文件不存在！')
-            exit()
-
-        self.auth = self.config.get('auth')
-        self.court_id = self.config.get('court_id')
-        self.court_list = self.config.get('court_list')
-        self.notify = self.config.get('notify')
-        os.environ['COURT_RESERVATION_OCR_API'] = self.config.get('ocr_api')
-
-    def dump_config(self):
-        try:
-            self.config['auth'].update(self.auth)
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                yaml.dump(self.config, f)
-
-        except Exception as e:
-            log.error('写入配置文件失败！')
-            log.debug(e)
-        else:
-            log.info('配置文件更新成功！')
+from utils import log, time_now, request, Config, start_time, stop_time
 
 
 class App(object):
@@ -139,8 +42,8 @@ class App(object):
                 )
         except Exception as e:
             log.error('Cookie 格式有误，请检查')
-            log.debug(e)
-            return None
+            log.error(e)
+            return {}
         else:
             return cookie
 
@@ -171,16 +74,8 @@ class App(object):
 
     @staticmethod
     def time_check() -> None:
-        now = (
-            datetime.utcnow()
-            .replace(tzinfo=timezone.utc)
-            .astimezone(timezone(timedelta(hours=8)))
-        )
-        start_time = datetime.combine(
-            now.date(), datetime.strptime("07:00:01", "%H:%M:%S").time()
-        ).replace(tzinfo=timezone(timedelta(hours=8)))
-        if now < start_time:
-            delta = float((start_time - now).total_seconds())
+        if time_now() < start_time:
+            delta = float((start_time - time_now()).total_seconds())
             log.info(f'还未到开始时间，等待{delta}秒')
             time.sleep(delta)
 
@@ -214,8 +109,8 @@ class App(object):
             )
             status = r.json()
         except Exception as e:
-            self._log_push('error', '检查登录状态失败，未知原因，请查阅 debug 日志')
-            log.debug(e)
+            self._log_push('error', '检查登录状态失败，未知原因，请查阅日志')
+            log.error(e)
             return False
         else:
             log.info(status.get('m'))
@@ -284,8 +179,8 @@ class App(object):
             login_result = r.json()
 
         except Exception as e:
-            self._log_push('error', '登录i·南航失败，未知原因，请查阅 debug 日志')
-            log.debug(e)
+            self._log_push('error', '登录i·南航失败，未知原因，请查阅日志')
+            log.error(e)
             return False
 
         else:
@@ -301,8 +196,8 @@ class App(object):
                 self._log_push('error', '账户密码参数错误，登录i·南航APP失败，请检查配置')
                 return False
             else:
-                self._log_push('error', '登录i·南航APP失败，未知原因，请查阅 debug 日志')
-                log.debug(login.content.decode('utf-8', errors='ignore'))
+                self._log_push('error', '登录i·南航APP失败，未知原因，请查阅日志')
+                log.info(login_result.content.decode('utf-8', errors='ignore'))
                 return False
 
     def get_cookie(self) -> bool:
@@ -325,8 +220,8 @@ class App(object):
                 allow_redirects=False,
             )
         except Exception as e:
-            self._log_push('error', '登录预约系统失败，未知原因，请查阅 debug 日志')
-            log.debug(e)
+            self._log_push('error', '登录预约系统失败，未知原因，请查阅日志')
+            log.error(e)
             return False
         else:
             try:
@@ -343,8 +238,8 @@ class App(object):
                     r'(?<=(PHPSESSID=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
                 ).group(0)
             except Exception as e:
-                self._log_push('error', '登录预约系统失败，可能是账号失效，请查阅 debug 日志')
-                log.debug(e)
+                self._log_push('error', '登录预约系统失败，可能是账号失效，请查阅日志')
+                log.error(e)
                 return False
             else:
                 self.cookie = {
@@ -357,8 +252,8 @@ class App(object):
                     log.info('获取预约系统鉴权信息成功')
                     return True
                 else:
-                    self._log_push('error', '获取预约系统鉴权信息失败，请查阅 debug 日志')
-                    log.debug(response.headers)
+                    self._log_push('error', '获取预约系统鉴权信息失败，请查阅日志')
+                    log.error(response.headers)
                     return False
 
     def get_name(self) -> bool:
@@ -380,7 +275,7 @@ class App(object):
             )
         except Exception as e:
             log.info('姓名获取失败')
-            log.debug(e)
+            log.error(e)
             return False
         else:
             response.encoding = 'utf-8'
@@ -392,7 +287,7 @@ class App(object):
                 return True
             except Exception as e:
                 log.info('姓名获取失败')
-                log.debug(e)
+                log.error(e)
                 return False
 
     def captcha(self) -> str:
@@ -414,10 +309,9 @@ class App(object):
                 headers=headers,
             )
             captcha_pic = base64.b64encode(response.content)
-
-        except Exceptions as e:
+        except Exception as e:
             log.error('验证码获取错误。')
-            log.debug(e)
+            log.error(e)
             return ''
         else:
             try:
@@ -431,9 +325,9 @@ class App(object):
                 )
                 r = request('POST', url, data=captcha_pic)
                 result = r.text
-            except Exceptions as e:
-                log.error('验证码识别出错。')
-                log.debug(e)
+            except Exception as e:
+                log.error('验证码识别接口出错。')
+                log.error(e)
                 return ''
             else:
                 log.info(f'验证码识别成功，{result}')
@@ -470,8 +364,8 @@ class App(object):
             )
             response.encoding = 'utf-8'
         except Exception as e:
-            self._log_push('error', '提交预约失败！详情见 debug 日志。')
-            log.debug(e)
+            self._log_push('error', '提交预约失败！详情见日志。')
+            log.error(e)
         else:
             r = response.json()
             fail_info = f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约失败，原因为{r['m']}"
@@ -485,15 +379,7 @@ class App(object):
                 log.warning('验证码错误')
                 return 0
             elif r['m'] == "不在服务时间":
-                now = (
-                    datetime.utcnow()
-                    .replace(tzinfo=timezone.utc)
-                    .astimezone(timezone(timedelta(hours=8)))
-                )
-                stop_time = datetime.combine(
-                    now.date(), datetime.strptime("21:00:00", "%H:%M:%S").time()
-                ).replace(tzinfo=timezone(timedelta(hours=8)))
-                if now > stop_time:
+                if time_now() > stop_time:
                     self._log_push('info', fail_info)
                     return -1
                 else:
@@ -570,33 +456,37 @@ class App(object):
 
     def push(self, status):
         notify = Notify(self.notify_conf)
-        title = '体育场地预约成功！' if status else '体育场地预约失败！'
-        time_now = (
-            datetime.utcnow()
-            .replace(tzinfo=timezone.utc)
-            .astimezone(timezone(timedelta(hours=8)))
-            .strftime("%Y-%m-%d %X")
-        )
-        content = "\n".join(self.push_content) + "\n\n" + time_now
+        title = '体育场地预约小助手：预约成功！' if status else '体育场地预约小助手：预约失败！'
+        content = "\n".join(self.push_content) + "\n\n" + time_now().strftime("%Y-%m-%d %X")
         notify.send(title, content)
 
-    def config_auth_update(self) -> dict:  # 返回 config.user.auth 字典
-        auth_update = {
-            'cookie': self.dict_to_str(self.cookie),
-            'refresh_token': self.refresh_token,
-            'access_token': self.access_token,
-            'imei': self.imei,
-        }
-        self.auth.update(auth_update)
-        return self.auth
+    # def config_auth_update(self) -> dict:  # 返回 config.user.auth 字典
+    #     auth_update = {
+    #         'cookie': self.dict_to_str(self.cookie),
+    #         'refresh_token': self.refresh_token,
+    #         'access_token': self.access_token,
+    #         'imei': self.imei,
+    #     }
+    #     self.auth.update(auth_update)
+    #     return self.auth
+
+
+banner = f'''
+-------------------------------------------------------------
+|                    体育场地预约小助手                       |
+-------------------------------------------------------------
+| Current Version: v0.5                                     |
+| Updated: Apr 22, 2022                                 |
+-------------------------------------------------------------
+'''
 
 
 def main():
+    log.info(banner)
     config = Config()
-    log.info('-------------------------------')
     app = App(config)
     status = app.run()
     log.info('结果推送...')
-    config.auth.update(app.config_auth_update())
     app.push(status)
-    config.dump_config()
+    # config.auth.update(app.config_auth_update())
+    # config.dump_config()

@@ -73,7 +73,9 @@ class Notify(object):
         # 创建推送任务队列
         if self.push_config.get("BARK_PUSH"):
             self.notify_function.append(self.bark)
-        if self.push_config.get("DD_BOT_TOKEN") and self.push_config.get("DD_BOT_SECRET"):
+        if self.push_config.get("DD_BOT_TOKEN") and self.push_config.get(
+            "DD_BOT_SECRET"
+        ):
             self.notify_function.append(self.dingding_bot)
         if self.push_config.get("FSKEY"):
             self.notify_function.append(self.feishu_bot)
@@ -118,11 +120,11 @@ class Notify(object):
         }
         params = ""
         for pair in filter(
-                lambda pairs: pairs[0].startswith("BARK_")
-                              and pairs[0] != "BARK_PUSH"
-                              and pairs[1]
-                              and bark_params.get(pairs[0]),
-                self.push_config.items(),
+            lambda pairs: pairs[0].startswith("BARK_")
+            and pairs[0] != "BARK_PUSH"
+            and pairs[1]
+            and bark_params.get(pairs[0]),
+            self.push_config.items(),
         ):
             params += f"{bark_params.get(pair[0])}={pair[1]}&"
         if params:
@@ -139,7 +141,7 @@ class Notify(object):
         使用 钉钉机器人 推送消息。
         """
         if not self.push_config.get("DD_BOT_SECRET") or not self.push_config.get(
-                "DD_BOT_TOKEN"
+            "DD_BOT_TOKEN"
         ):
             log.warning("钉钉机器人 服务的 DD_BOT_SECRET 或者 DD_BOT_TOKEN 未设置!!\n取消推送")
             return
@@ -190,7 +192,7 @@ class Notify(object):
         使用 go_cqhttp 推送消息。
         """
         if not self.push_config.get("CQHTTP_URL") or not self.push_config.get(
-                "CQHTTP_QQ"
+            "CQHTTP_QQ"
         ):
             log.warning("go-cqhttp 服务的 CQHTTP_URL 或 CQHTTP_QQ 未设置!!\n取消推送")
             return
@@ -210,7 +212,7 @@ class Notify(object):
         使用 gotify 推送消息。
         """
         if not self.push_config.get("GOTIFY_URL") or not self.push_config.get(
-                "GOTIFY_TOKEN"
+            "GOTIFY_TOKEN"
         ):
             log.warning("gotify 服务的 GOTIFY_URL 或 GOTIFY_TOKEN 未设置!!\n取消推送")
             return
@@ -301,7 +303,7 @@ class Notify(object):
         使用 qmsg 推送消息。
         """
         if not self.push_config.get("QMSG_KEY") or not self.push_config.get(
-                "QMSG_TYPE"
+            "QMSG_TYPE"
         ):
             log.warning("qmsg 的 QMSG_KEY 或者 QMSG_TYPE 未设置!!\n取消推送")
             return
@@ -368,8 +370,8 @@ class Notify(object):
 
         def send_text(self, message, touser="@all"):
             send_url = (
-                    "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token="
-                    + self.get_access_token()
+                "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token="
+                + self.get_access_token()
             )
             send_values = {
                 "touser": touser,
@@ -385,8 +387,8 @@ class Notify(object):
 
         def send_mpnews(self, title, message, media_id, touser="@all"):
             send_url = (
-                    "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token="
-                    + self.get_access_token()
+                "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token="
+                + self.get_access_token()
             )
             send_values = {
                 "touser": touser,
@@ -436,7 +438,7 @@ class Notify(object):
         使用 telegram 机器人 推送消息。
         """
         if not self.push_config.get("TG_BOT_TOKEN") or not self.push_config.get(
-                "TG_USER_ID"
+            "TG_USER_ID"
         ):
             log.warning("Telegram 服务的 bot_token 或者 user_id 未设置!!\n取消推送")
             return
@@ -455,15 +457,15 @@ class Notify(object):
         }
         proxies = None
         if self.push_config.get("TG_PROXY_HOST") and self.push_config.get(
-                "TG_PROXY_PORT"
+            "TG_PROXY_PORT"
         ):
             if self.push_config.get(
-                    "TG_PROXY_AUTH"
+                "TG_PROXY_AUTH"
             ) is not None and "@" not in self.push_config.get("TG_PROXY_HOST"):
                 self.push_config["TG_PROXY_HOST"] = (
-                        self.push_config.get("TG_PROXY_AUTH")
-                        + "@"
-                        + self.push_config.get("TG_PROXY_HOST")
+                    self.push_config.get("TG_PROXY_AUTH")
+                    + "@"
+                    + self.push_config.get("TG_PROXY_HOST")
                 )
             proxy_str = "http://{}:{}".format(
                 self.push_config.get("TG_PROXY_HOST"),

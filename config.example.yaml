@@ -8,10 +8,10 @@ auth:
    # i·南航 APP Token
   access_token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   refresh_token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   # 统一身份认证系统账密
   username: 011710101
+   # 统一身份认证系统密码
   password: password
-  imei:  # 模拟设备信息，无需手动填写
+  imei:  # 模拟设备信息，应为一个合法的UUID(大写字母)或留空
 
 # 场地类型
 court_id: 19
