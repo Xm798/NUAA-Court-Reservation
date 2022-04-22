@@ -6,7 +6,8 @@ import collections
 
 yourcookie = ''
 
-def prase(data):
+
+def parse(data):
     def tree():
         return collections.defaultdict(tree)
 
@@ -70,7 +71,7 @@ def main():
         j_data = o_data['d']
 
         for key, value in j_data.items():
-            resource_dict['resource_list'][str(resource_id)] = prase(value)
+            resource_dict['resource_list'][str(resource_id)] = parse(value)
         time.sleep(2)
         print(f"{resource_dict['resource_id'][str(resource_id)]}处理结束")
 
