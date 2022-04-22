@@ -1,67 +1,7 @@
-import os
 import logging
 import requests
 import time
-import ruamel.yaml
 from datetime import datetime, timedelta, timezone
-
-yaml = ruamel.yaml.YAML()
-
-
-class Config(object):
-    def __init__(self):
-        self.config: dict = {}
-
-        self.auth: dict = {}
-        self.court_id: str = ''
-        self.court_list: list = []
-        self.notify: dict = {}
-
-        project_path = os.path.dirname(__file__)
-        self.config_file = os.path.join(project_path, 'config.yaml')
-        self.load_config()  # 加载配置
-
-    def __getitem__(self, item):
-        if item in self.__dict__:
-            return self.__dict__[item]
-
-    def __setitem__(self, key, value):
-        self.__dict__[key] = value
-
-    def __delitem__(self, key):
-        del self.__dict__[key]
-
-    def load_config(self):
-        if os.path.exists(self.config_file):
-            try:
-                f = open(self.config_file, 'r', encoding='utf-8')
-                data = f.read()
-                self.config = yaml.load(data)
-            except Exception as e:
-                log.error('配置文件加载失败！')
-                log.error(e)
-                exit()
-        else:
-            log.error('配置文件不存在！')
-            exit()
-
-        self.auth = self.config.get('auth')
-        self.court_id = self.config.get('court_id')
-        self.court_list = self.config.get('court_list')
-        self.notify = self.config.get('notify')
-        os.environ['COURT_RESERVATION_OCR_API'] = self.config.get('ocr_api')
-
-    # def dump_config(self):
-    #     try:
-    #         self.config['auth'].update(self.auth)
-    #         with open(self.config_file, 'w', encoding='utf-8') as f:
-    #             yaml.dump(self.config, f)
-    #
-    #     except Exception as e:
-    #         log.error('写入配置文件失败！')
-    #         log.debug(e)
-    #     else:
-    #         log.info('配置文件更新成功！')
 
 
 def beijing_time(*args, **kwargs):
@@ -106,6 +46,7 @@ def request(*args, **kwargs):
             return response
 
 
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(message)s',
@@ -122,10 +63,3 @@ start_time = datetime.combine(
 stop_time = datetime.combine(
     time_now().date(), datetime.strptime("21:00:00", "%H:%M:%S").time()
 ).replace(tzinfo=timezone(timedelta(hours=8)))
-
-config = Config()
-
-# 设置日志等级
-if config.config.get('log_level'):
-    if config.config.get('log_level').lower() == 'debug':
-        log.setLevel(logging.DEBUG)

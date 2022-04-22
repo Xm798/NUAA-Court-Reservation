@@ -8,7 +8,8 @@ import uuid
 import base64
 from urllib.parse import urlencode
 from notify import Notify
-from utils import log, time_now, request, Config, start_time, stop_time
+from config import config
+from utils import log, time_now, request, start_time, stop_time
 
 
 class App(object):
@@ -483,7 +484,6 @@ banner = f'''
 
 def main():
     log.info(banner)
-    config = Config()
     app = App(config)
     status = app.run()
     log.info('结果推送...')
