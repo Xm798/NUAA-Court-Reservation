@@ -20,19 +20,14 @@ class App(object):
         self.access_token: str = self.auth.get('access_token')
         self.username: str = self.auth.get('username')
         self.password: str = self.auth.get('password')
+        self.name: str = ''
         self.imei: str = (
             self.auth.get('imei')
             if self.auth.get('imei')
             else str(uuid.uuid1()).upper()
         )
 
-        self.court_id: int = config['court_id']  # 场地类型
-        self.court_list: list = config['court_list']  # 场地列表
-        self.notify_conf: dict = config['notify']
-
         self.push_content: list = []
-        self.flag_auth_update: bool = False
-        self.flag_abort: bool = False
 
     @staticmethod
     def cookie_to_dict(cookie) -> dict:
@@ -42,7 +37,7 @@ class App(object):
                     [line.strip().split('=', 1) for line in cookie.split(';')]
                 )
         except Exception as e:
-            log.error('Cookie 格式有误，请检查')
+            log.error('Cookie 格式有误，请检查。')
             log.error(e)
             return {}
         else:
@@ -77,7 +72,7 @@ class App(object):
     def time_check() -> None:
         if time_now() < start_time:
             delta = float((start_time - time_now()).total_seconds())
-            log.info(f'还未到开始时间，等待{delta}秒')
+            log.info(f'还未到开始时间，等待{delta}秒...')
             time.sleep(delta)
 
     def _log_push(self, level: str, content: str) -> None:
@@ -110,7 +105,7 @@ class App(object):
             )
             status = r.json()
         except Exception as e:
-            self._log_push('error', '检查登录状态失败，未知原因，请查阅日志')
+            self._log_push('error', '检查登录状态失败，未知原因，请查阅日志。')
             log.error(e)
             return False
         else:
@@ -142,6 +137,7 @@ class App(object):
             login_stat = request(
                 'post',
                 'https://m.nuaa.edu.cn/nuaaappv2/wap/install-stat/insert',
+                timeout=5,
                 headers=headers,
                 json=data,
             )
@@ -173,6 +169,7 @@ class App(object):
             r = request(
                 'post',
                 'https://m.nuaa.edu.cn/a_nuaa/api/login-v2/index',
+                timeout=5,
                 headers=headers,
                 data=body,
                 cookies=cookie_app,
@@ -180,7 +177,7 @@ class App(object):
             login_result = r.json()
 
         except Exception as e:
-            self._log_push('error', '登录i·南航失败，未知原因，请查阅日志')
+            self._log_push('error', '登录i·南航失败，未知原因，请查阅日志。')
             log.error(e)
             return False
 
@@ -191,13 +188,13 @@ class App(object):
                 self.access_token = login_result['d']['access_token']
                 return True
             elif login_result['m'] == '账户或密码错误':
-                self._log_push('error', '账户或密码错误，登录i·南航APP失败')
+                self._log_push('error', '账户或密码错误，登录i·南航APP失败。')
                 return False
             elif login_result['m'] == '参数错误':
-                self._log_push('error', '账户密码参数错误，登录i·南航APP失败，请检查配置')
+                self._log_push('error', '账户密码参数错误，登录i·南航APP失败，请检查配置。')
                 return False
             else:
-                self._log_push('error', '登录i·南航APP失败，未知原因，请查阅日志')
+                self._log_push('error', '登录i·南航APP失败，未知原因，请查阅日志。')
                 log.info(login_result.content.decode('utf-8', errors='ignore'))
                 return False
 
@@ -221,7 +218,7 @@ class App(object):
                 allow_redirects=False,
             )
         except Exception as e:
-            self._log_push('error', '登录预约系统失败，未知原因，请查阅日志')
+            self._log_push('error', '登录预约系统失败，未知原因，请查阅日志。')
             log.error(e)
             return False
         else:
@@ -239,7 +236,7 @@ class App(object):
                     r'(?<=(PHPSESSID=))[a-zA-Z0-9]+', response.headers['Set-Cookie']
                 ).group(0)
             except Exception as e:
-                self._log_push('error', '登录预约系统失败，可能是账号失效，请查阅日志')
+                self._log_push('error', '登录预约系统失败，可能是账号失效，请查阅日志。')
                 log.error(e)
                 return False
             else:
@@ -250,10 +247,10 @@ class App(object):
                     'vt': vt,
                 }
                 if vjuid and vjvd and vt and phpsessid:
-                    log.info('获取预约系统鉴权信息成功')
+                    log.info('获取预约系统鉴权信息成功！')
                     return True
                 else:
-                    self._log_push('error', '获取预约系统鉴权信息失败，请查阅日志')
+                    self._log_push('error', '获取预约系统鉴权信息失败，请查阅日志。')
                     log.error(response.headers)
                     return False
 
@@ -275,19 +272,19 @@ class App(object):
                 headers=headers,
             )
         except Exception as e:
-            log.info('姓名获取失败')
+            log.info('姓名获取失败。')
             log.error(e)
             return False
         else:
             response.encoding = 'utf-8'
             r = response.json()
             try:
-                name = r['d'].get('name')
-                number = r['d'].get('number')
-                self._log_push('info', f'账号：{name} {number}')
+                self.name = r['d'].get('name')
+                self.username = r['d'].get('number')
+                log.info(f'账号：{self.name} {self.username}')
                 return True
             except Exception as e:
-                log.info('姓名获取失败')
+                log.info('姓名获取失败。')
                 log.error(e)
                 return False
 
@@ -300,7 +297,7 @@ class App(object):
                 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ZhilinEai/2.8 ZhilinNuaaApp',
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
                 'Referer': 'https://ehall3.nuaa.edu.cn/v2/reserve/m_reserveDetail?id='
-                + str(self.court_id),
+                + str(config.court_id),
                 'Accept-Encoding': 'gzip, deflate, br',
             }
             response = request(
@@ -334,11 +331,11 @@ class App(object):
                 log.info(f'验证码识别成功，{result}')
                 return result
 
-    def reserve(self, court_data):
+    def reserve(self, index, court_data):
         try:
             captcha = self.captcha()
             body = {
-                'resource_id': self.court_id,
+                'resource_id': config.court_id,
                 'code': captcha,
                 'remarks': '',
                 'deduct_num': '',
@@ -369,44 +366,41 @@ class App(object):
             log.error(e)
         else:
             r = response.json()
-            fail_info = f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约失败，原因为{r['m']}"
+            fail_info = f"{config.courts_list_readable[index]['period']} 的 {config.courts_list_readable[index]['sub_resource_id']} 场地预约失败，原因为{r['m']}。"
             if r['m'] == '操作成功':
                 self._log_push(
                     'info',
-                    f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约成功",
+                    f"{config.courts_list_readable[index]['period']} 的 {config.courts_list_readable[index]['sub_resource_id']} 场地预约成功！",
                 )
                 return 1
             elif r['m'] == '验证码错误':
-                log.warning('验证码错误')
+                log.warning('验证码错误，正在重试...')
                 return 0
             elif r['m'] == "不在服务时间":
                 if time_now() > stop_time:
                     self._log_push('info', fail_info)
                     return -1
                 else:
-                    log.info(
-                        f"id为{court_data['sub_resource_id']}，时间为{court_data['period']}的场地预约不在服务时间，正在重试..."
-                    )
+                    log.info(f"不在服务时间，正在重试...")
                     return 0
             else:
                 self._log_push('info', fail_info)
                 return -1
 
-    def launch_reserve(self, court):
-        i = self.reserve(court)
+    def launch_reserve(self, index, court):
+        i = self.reserve(index, court)
         while i == 0:
             time.sleep(0.3)
-            i = self.reserve(court)
+            i = self.reserve(index, court)
         return i
 
     def log_with_password(self):
         if self.password and self.password:
-            log.info('登录方式：统一身份认证账密')
             if self.login_app():
-                log.info('账密方式：登录成功')
+                log.info('统一身份认证：登录成功！')
                 return True
             else:
-                log.info('账密方式：登录失败')
+                log.info('统一身份认证：登录失败。')
                 return False
         return False
 
@@ -419,7 +413,7 @@ class App(object):
                 if self.get_name():
                     return True
             else:
-                log.info('Cookie不完整，即将重新获取')
+                log.info('Cookie不完整，即将重新获取...')
 
         if self.access_token and self.refresh_token:  # 使用 Token 登录
             log.info('登录方式：i·南航 Token')
@@ -431,6 +425,11 @@ class App(object):
             else:
                 log.info('Token 有效...')
 
+        if self.username and self.password:
+            log.info('登录方式：统一身份认证账密')
+            if not self.log_with_password():
+                return False
+
         log.info('获取预约系统鉴权信息...')
         if self.get_cookie():
             log.info('获取用户基本信息...')
@@ -441,14 +440,14 @@ class App(object):
 
     def run(self):
         if self.login():
-            log.info('登录预约系统成功...')
+            log.info('登录预约系统成功！')
         else:
-            log.info('登录预约系统失败...')
+            log.info('登录预约系统失败。')
             return False
         self.time_check()
         log.info('提交预约申请...')
-        for court in self.court_list:
-            result = self.launch_reserve(court)
+        for index, court in enumerate(config.courts_list):
+            result = self.launch_reserve(index, court)
             if result == 1:  # 预约成功
                 return True
             elif result == -1:  # 预约失败，换个场地
@@ -456,9 +455,16 @@ class App(object):
         return False
 
     def push(self, status):
-        notify = Notify(self.notify_conf)
+        notify = Notify(config.notify)
         title = '体育场地预约小助手：预约成功！' if status else '体育场地预约小助手：预约失败！'
-        content = "\n".join(self.push_content) + "\n\n" + time_now().strftime("%Y-%m-%d %X")
+        content = (
+            f"账号：{self.name} {self.username}\n"
+            + f"场馆：{config.resources['resource_id'][config.court_id]}\n\n"
+            + "预约详情：\n"
+            + "\n".join(self.push_content)
+            + "\n\n"
+            + time_now().strftime("%Y-%m-%d %X")
+        )
         notify.send(title, content)
 
     # def config_auth_update(self) -> dict:  # 返回 config.user.auth 字典
@@ -476,7 +482,7 @@ banner = f'''
 -------------------------------------------------------------
 |                 NUAA-Court-Reservation                    |
 -------------------------------------------------------------
-| Current Version: v0.5                                     |
+| Current Version: v0.6                                     |
 | Updated: Apr 22, 2022                                     |
 -------------------------------------------------------------
 '''

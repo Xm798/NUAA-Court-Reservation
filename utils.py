@@ -18,17 +18,17 @@ def time_now():
     return now
 
 
-def request(*args, **kwargs):
+def request(*args, timeout=1.5, **kwargs):
     is_retry = True
     count = 0
-    max_retries = 20
+    max_retries = 15
     sleep_seconds = 0.5
     # proxy = {'http': 'http://127.0.0.1:8866', 'https': 'http://127.0.0.1:8866'}
-    requests.packages.urllib3.disable_warnings()
+    # requests.packages.urllib3.disable_warnings()
     while is_retry and count <= max_retries:
         try:
             s = requests.Session()
-            response = s.request(*args, **kwargs, timeout=1)
+            response = s.request(*args, timeout=timeout, **kwargs)
             # response = s.request(
             #     *args, **kwargs, timeout=2, proxies=proxy, verify=False
             # )
@@ -44,7 +44,6 @@ def request(*args, **kwargs):
             time.sleep(sleep_seconds)
         else:
             return response
-
 
 
 logging.basicConfig(

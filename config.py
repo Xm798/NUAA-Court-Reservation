@@ -2,7 +2,7 @@ import json
 import os
 import ruamel.yaml
 import logging
-from utils import log, request
+from utils import log, request, time_now
 
 yaml = ruamel.yaml.YAML()
 
@@ -10,18 +10,20 @@ yaml = ruamel.yaml.YAML()
 class Config(object):
     def __init__(self):
         self.config: dict = {}
+        self.resources: dict = {}
 
         self.auth: dict = {}
         self.court_id: str = ''
-        self.court_list: list = []
+        self.courts_list: list = []
+        self.courts_list_readable: list = []
         self.notify: dict = {}
-        self.resources: dict = {}
 
         self.project_path = os.path.dirname(__file__)
         self.config_file = os.path.join(self.project_path, 'config.yaml')
 
         self.load_config()  # 加载配置
-        self.load_resources()
+        self.load_resources()   # 加载资源
+        self.parse_courts()  # 解析场地列表
 
     def __getitem__(self, item):
         if item in self.__dict__:
@@ -48,8 +50,7 @@ class Config(object):
             exit()
 
         self.auth = self.config.get('auth')
-        self.court_id = self.config.get('court_id')
-        self.court_list = self.config.get('court_list')
+        self.court_id = str(self.config.get('court_id'))
         self.notify = self.config.get('notify')
         os.environ['COURT_RESERVATION_OCR_API'] = self.config.get('ocr_api')
 
@@ -71,6 +72,22 @@ class Config(object):
         with open(resources_file, 'r', encoding='utf-8') as f:
             log.info('从本地加载资源列表...')
             self.resources = json.load(f)
+
+    def parse_courts(self):
+        date = time_now().strftime("%Y-%m-%d")
+        courts_list_input = self.config.get('courts_list')
+        for i, courts in enumerate(courts_list_input):
+            for j, court in enumerate((courts['courts'])):
+                self.courts_list.append({
+                    'date': date,
+                    'period': self.resources['resource_list'][self.court_id]['time_list'][courts['time']],
+                    'sub_resource_id': self.resources['resource_list'][self.court_id]['court_list'][courts['time']][str(court)+"号"]
+                })
+                self.courts_list_readable.append({
+                    'date': date,
+                    'period': courts['time'],
+                    'sub_resource_id': str(court)+"号"
+                })
 
 
 config = Config()

@@ -1,7 +1,9 @@
+# 日志等级
+log_level: debug
 # 验证码识别 API
 ocr_api: https://cocr.xm.mk/
-# 日志等级
-log_level: info
+# 资源文件，留空使用本地文件
+resources_file: https://xm798.github.io/NUAA-Court-Reservation/files/resources.json
 
 # 登录信息
 auth:
@@ -13,18 +15,32 @@ auth:
   username: 011710101
    # 统一身份认证系统密码
   password: password
-  imei:  # 模拟设备信息，应为一个合法的UUID(大写字母)或留空
+  imei:  # 模拟设备信息，应为一个合法的UUID(大写)或留空
 
 # 场地类型
 court_id: 19
 
-# 预约的场地列表
-court_list:
-- date: '2022-04-19'
-  period: 1833
-  sub_resource_id: 12270
+# 要预约的场地列表
+courts_list:
+- time: '09:00-10:00'
+  courts: [3, 4, 5]
+
+- time: '18:00-19:00'
+  courts: [6]
 
 # 通知设置
 notify:
   # 微信 Push plus 推送
   PUSH_PLUS_TOKEN: xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  # Bark 推送
+  BARK_PUSH': '',  # bark IP 或设备码，例：https://api.day.app/DxHcxxxxxRxxxxxxcm/
+  # QQ 推送
+  CQHTTP_URL': '',  # go-cqhttp 推送到个人QQ：http://127.0.0.1/send_private_msg，群：http://127.0.0.1/send_group_msg
+  CQHTTP_QQ': '',  # go-cqhttp 的推送群或用户，CQHTTP_URL 设置 /send_private_msg 时填入 user_id=个人QQ，/send_group_msg 时填入 group_id=QQ群
+  CQHTTP_TOKEN': '',  # go-cqhttp 的 token
+  # Pushplus 推送
+  PUSH_PLUS_TOKEN': '',  # push+ 微信推送的用户令牌
+  # Telegram 推送
+  TG_BOT_TOKEN': '',  # tg 机器人的 TG_BOT_TOKEN，例：1407203283:AAG9rt-6RDaaX0HBLZQq0laNOh898iFYaRQ
+  TG_USER_ID': '',  # tg 机器人的 TG_USER_ID，例：1434078534
+  TG_API_HOST': '',  # tg 代理 api
