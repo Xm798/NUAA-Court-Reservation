@@ -410,6 +410,7 @@ class App(object):
         if self.cookie:
             log.info('登录方式：办事大厅 Cookie')
             if self.cookie.get('PHPSESSID'):
+                log.info('获取用户基本信息...')
                 if self.get_name():
                     return True
             else:
@@ -424,11 +425,11 @@ class App(object):
                     return False
             else:
                 log.info('Token 有效...')
-
-        if self.username and self.password:
-            log.info('登录方式：统一身份认证账密')
-            if not self.log_with_password():
-                return False
+        else:
+            if self.username and self.password:
+                log.info('登录方式：统一身份认证账密')
+                if not self.log_with_password():
+                    return False
 
         log.info('获取预约系统鉴权信息...')
         if self.get_cookie():
