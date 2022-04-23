@@ -18,7 +18,7 @@ def time_now():
     return now
 
 
-def request(*args, timeout=1.5, **kwargs):
+def request(*args, timeout=3, **kwargs):
     is_retry = True
     count = 0
     max_retries = 15
