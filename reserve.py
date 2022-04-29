@@ -341,6 +341,7 @@ class App(object):
                 'deduct_num': '',
                 'data': f'[{json.dumps(court_data)}]',
             }
+            log.debug(f'请求体：{body}')
             body = urlencode(body)
             headers = {
                 'Host': 'ehall3.nuaa.edu.cn',
@@ -483,8 +484,8 @@ banner = f'''
 -------------------------------------------------------------
 |                 NUAA-Court-Reservation                    |
 -------------------------------------------------------------
-| Current Version: v0.6.1                                   |
-| Updated: Apr 23, 2022                                     |
+| Current Version: v0.6.2                                   |
+| Updated: Apr 29, 2022                                     |
 -------------------------------------------------------------
 '''
 
