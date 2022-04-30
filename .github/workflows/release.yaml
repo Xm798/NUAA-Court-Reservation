@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  serverless:
+    name: Publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set env
+        run: echo "RELEASE_VERSION=$(echo ${GITHUB_REF:10})" >> $GITHUB_ENV
+
+      - name: Export banner
+        run: |
+          echo -e "banner = f'''\n-------------------------------------------------------------\n|                 NUAA-Court-Reservation                    |\n-------------------------------------------------------------\n| Current Version: v${{ env.RELEASE_VERSION }}                                   |\n| Updated: $(date +'%Y-%m-%d')                                       |\n-------------------------------------------------------------\n'''" > __banner__.py
+
+      - name: Initialization environment
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+  
+      - name: Install requirements
+        run: pip install -t . -r ./requirements.txt
+  
+      - name: Install zip
+        run: |
+          sudo -E apt-get update
+          sudo -E apt-get install zip
+
+      - name: Pack serverless file
+        run: |
+          mv -f ./config.example.yaml ./config.yaml
+          zip -r "Court-Reservation-$RELEASE_VERSION.zip" . -x "*.pyc" -x "./bin/*" -x "*.so" -x ".git/*" -x ".github/*" -x ".gitignore" -x "resources.py" -x "./docs/*" -x "requirements.txt"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: "*.zip"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

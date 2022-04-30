@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - 'docs/**'
+
+jobs:
+  serverless:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get commit hash and date
+        run: |
+          echo "COMMIT_HASH=$(git rev-parse --short "$GITHUB_SHA")" >> $GITHUB_ENV
+          echo "DATE=$(date +'%Y%m%d')" >> $GITHUB_ENV
+
+      - name: Initialization environment
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
+      - name: Export banner
+        run: |
+          echo -e "banner = f'''\n-------------------------------------------------------------\n|                 NUAA-Court-Reservation                    |\n-------------------------------------------------------------\n| Current Version: v${{ env.DATE }}.${{ env.COMMIT_HASH }}                        |\n| Updated: $(date +'%Y-%m-%d')                                       |\n-------------------------------------------------------------\n'''" > __banner__.py
+
+      - name: Install requirements
+        run: pip install -t . -r ./requirements.txt
+  
+      - name: Pack serverless file
+        run: |
+          mv -f ./config.example.yaml ./config.yaml
+          echo -e "*.pyc\nbin\n*.so\n.git\n.github\ndocs\nresources.py\n.gitignore\nexclude_files.txt\nrequirements.txt" > exclude_files.txt
+          rsync -av --exclude-from exclude_files.txt . ./release/
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Court-Reservation-${{ env.DATE }}.${{ env.COMMIT_HASH }}
+          path: release/
