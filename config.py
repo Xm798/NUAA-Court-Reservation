@@ -21,9 +21,10 @@ class Config(object):
         self.project_path = os.path.dirname(__file__)
         self.config_file = os.path.join(self.project_path, 'config.yaml')
 
-        self.load_config()  # 加载配置
-        self.load_resources()   # 加载资源
-        self.parse_courts()  # 解析场地列表
+        # 设置日志等级
+        if self.config.get('log_level'):
+            if self.config.get('log_level').lower() == 'debug':
+                log.setLevel(logging.DEBUG)
 
     def __getitem__(self, item):
         if item in self.__dict__:
@@ -34,6 +35,11 @@ class Config(object):
 
     def __delitem__(self, key):
         del self.__dict__[key]
+
+    def init(self):
+        self.load_config()  # 加载配置
+        self.load_resources()   # 加载资源
+        self.parse_courts()  # 解析场地列表
 
     def load_config(self):
         if os.path.exists(self.config_file):
@@ -92,7 +98,4 @@ class Config(object):
 
 config = Config()
 
-# 设置日志等级
-if config.config.get('log_level'):
-    if config.config.get('log_level').lower() == 'debug':
-        log.setLevel(logging.DEBUG)
+

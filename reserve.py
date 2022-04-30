@@ -7,6 +7,7 @@ import random
 import uuid
 import base64
 from urllib.parse import urlencode
+from __banner__ import banner
 from notify import Notify
 from config import config
 from utils import log, time_now, request, start_time, stop_time
@@ -483,18 +484,9 @@ class App(object):
     #     return self.auth
 
 
-banner = f'''
--------------------------------------------------------------
-|                 NUAA-Court-Reservation                    |
--------------------------------------------------------------
-| Current Version: v0.6.3                                   |
-| Updated: Apr 30, 2022                                     |
--------------------------------------------------------------
-'''
-
-
 def main():
     log.info(banner)
+    config.init()
     app = App(config)
     status = app.run()
     log.info('结果推送...')
