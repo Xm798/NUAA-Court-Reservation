@@ -24,7 +24,7 @@ class App(object):
         self.imei: str = (
             self.auth.get('imei')
             if self.auth.get('imei')
-            else str(uuid.uuid1()).upper()
+            else str(uuid.uuid3(uuid.NAMESPACE_URL, str(self.auth))).upper()
         )
 
         self.push_content: list = []
@@ -341,7 +341,7 @@ class App(object):
                 'deduct_num': '',
                 'data': f'[{json.dumps(court_data)}]',
             }
-            log.debug(f'请求体：{body}')
+            # log.debug(f'请求体：{body}')
             body = urlencode(body)
             headers = {
                 'Host': 'ehall3.nuaa.edu.cn',
@@ -365,6 +365,7 @@ class App(object):
         except Exception as e:
             self._log_push('error', '提交预约失败！详情见日志。')
             log.error(e)
+            return 0
         else:
             r = response.json()
             fail_info = f"{config.courts_list_readable[index]['period']} 的 {config.courts_list_readable[index]['sub_resource_id']} 场地预约失败，原因为{r['m']}。"
@@ -389,11 +390,13 @@ class App(object):
                 return -1
 
     def launch_reserve(self, index, court):
-        i = self.reserve(index, court)
-        while i == 0:
-            time.sleep(0.3)
-            i = self.reserve(index, court)
-        return i
+        ret_code = self.reserve(index, court)
+        i = 0
+        while ret_code == 0 and i < 5:
+            time.sleep(0.1)
+            ret_code = self.reserve(index, court)
+            i += 1
+        return ret_code
 
     def log_with_password(self):
         if self.password and self.password:
@@ -453,7 +456,7 @@ class App(object):
             if result == 1:  # 预约成功
                 return True
             elif result == -1:  # 预约失败，换个场地
-                time.sleep(0.5)  # 稍微歇会
+                time.sleep(0.2)  # 稍微歇会
         return False
 
     def push(self, status):
@@ -484,8 +487,8 @@ banner = f'''
 -------------------------------------------------------------
 |                 NUAA-Court-Reservation                    |
 -------------------------------------------------------------
-| Current Version: v0.6.2                                   |
-| Updated: Apr 29, 2022                                     |
+| Current Version: v0.6.3                                   |
+| Updated: Apr 30, 2022                                     |
 -------------------------------------------------------------
 '''
 

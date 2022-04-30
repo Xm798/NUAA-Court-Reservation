@@ -22,7 +22,7 @@ def request(*args, timeout=3, **kwargs):
     is_retry = True
     count = 0
     max_retries = 15
-    sleep_seconds = 0.5
+    sleep_seconds = 0.1
     # proxy = {'http': 'http://127.0.0.1:8866', 'https': 'http://127.0.0.1:8866'}
     # requests.packages.urllib3.disable_warnings()
     while is_retry and count <= max_retries:

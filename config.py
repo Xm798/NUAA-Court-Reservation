@@ -55,11 +55,11 @@ class Config(object):
         os.environ['COURT_RESERVATION_OCR_API'] = self.config.get('ocr_api')
 
     def load_resources(self):
-        resources_file = self.config.get('resources_file')
-        if resources_file:
+        resources_file_online = self.config.get('resources_file')
+        if resources_file_online:
             log.info('在线加载资源列表...')
             try:
-                r = request('get', resources_file)
+                r = request('get', resources_file_online)
                 self.resources = r.json()
             except Exception as e:
                 log.error('在线加载资源列表失败！')
@@ -67,8 +67,8 @@ class Config(object):
             else:
                 log.info('在线加载资源列表成功！')
                 return
-        resources_file = os.path.join(self.project_path, 'resources.json')
 
+        resources_file = os.path.join(self.project_path, 'resources.json')
         with open(resources_file, 'r', encoding='utf-8') as f:
             log.info('从本地加载资源列表...')
             self.resources = json.load(f)
