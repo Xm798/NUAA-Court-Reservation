@@ -70,10 +70,15 @@ class App(object):
         return content_type, body
 
     @staticmethod
-    def time_check() -> None:
+    def time_check(self) -> None:
         if time_now() < start_time:
             delta = float((start_time - time_now()).total_seconds())
             log.info(f'还未到开始时间，等待{delta}秒...')
+            time.sleep(delta - 15)
+            log.info(f'预热验证码识别接口...')
+            self.captcha()
+            delta = float((start_time - time_now()).total_seconds())
+            log.info(f'还未到开始时间，还需等待{delta}秒...')
             time.sleep(delta)
 
     def _log_push(self, level: str, content: str) -> None:
