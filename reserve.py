@@ -69,7 +69,6 @@ class App(object):
         content_type = 'multipart/form-data; boundary=%s' % boundary
         return content_type, body
 
-    @staticmethod
     def time_check(self) -> None:
         if time_now() < start_time:
             delta = float((start_time - time_now()).total_seconds())
