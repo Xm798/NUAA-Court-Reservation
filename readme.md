@@ -1,3 +1,1 @@
-# 使用文档
-
-见 https://xm798.github.io/NUAA-Court-Reservation/
+## [使用文档](https://xm798.github.io/NUAA-Court-Reservation/)

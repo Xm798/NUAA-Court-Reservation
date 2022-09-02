@@ -3,13 +3,13 @@ log_level: debug
 # 验证码识别 API
 ocr_api: https://cocr.xm.mk/
 # 资源文件，留空使用本地文件
-resources_file: https://file-1257193553.cos.ap-shanghai.myqcloud.com/NUAA-Court-Reservation/resources.json
+resources_file:
 
 # 登录信息
 auth:
    # 预约系统 Cookie
   cookie: vjuid=xxxxx; vjvd=xxxxxxxxxxxxxxxxx; vt=xxxxx; PHPSESSID=xxxxxx
-   # i·南航 APP Token
+   # APP Token
   access_token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   refresh_token: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   username: '011710101'
@@ -31,7 +31,7 @@ courts_list:
 # 通知设置
 notify:
   # 微信 Push plus 推送
-  PUSH_PLUS_TOKEN: xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  PUSH_PLUS_TOKEN:
   # Bark 推送
   BARK_PUSH':  # Bark IP 或设备码，例：https://api.day.app/DxHcxxxxxRxxxxxxcm/
   # QQ 推送
